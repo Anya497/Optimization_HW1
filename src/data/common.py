@@ -14,11 +14,11 @@ def split_dataset(dataset: list, train_frac: float, val_frac: float) -> tuple:
     return train_dataset, val_dataset, test_dataset
 
 
-def create_minibatch_dataloader(dataset: list, batch_size: int, seed: int):
+def create_minibatch_dataloader(dataset, batch_size: int, seed: int, updates: int = 1):
     sampler = RandomSampler(
         dataset,
         replacement=True,
-        num_samples=batch_size,
+        num_samples=updates * batch_size,
         generator=torch.Generator().manual_seed(seed),
     )
     loader = DataLoader(
