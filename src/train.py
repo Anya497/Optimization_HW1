@@ -3,7 +3,7 @@ from typing import Iterator
 import torch
 from grad_noise import compute_noisy_per_example_grads
 from torch.utils.data import DataLoader
-import torch.functional as F
+import torch.nn.functional as F
 
 
 def eval_bce_with_logits(X, y, model):
