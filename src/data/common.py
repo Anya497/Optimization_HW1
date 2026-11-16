@@ -1,5 +1,4 @@
 import random
-from typing import Iterator
 import torch
 from torch.utils.data import RandomSampler, DataLoader
 
