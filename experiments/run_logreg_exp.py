@@ -1,4 +1,5 @@
-from src.data.log_regression import get_cls_data
+from src.data.common import make_loaders
+from src.data.log_regression import sample_points
 from torch.nn import Linear
 from experiments.common import setup_seed
 
@@ -9,5 +10,6 @@ def main():
     n_points = 1000
     in_features = 2
     out_features = 1
-    dataset = get_cls_data(n_points, features_num=in_features)
+    loaders = make_loaders(sample_points, train_size=n_points, data_seed=seed, seed=seed)
     model = Linear(in_features, out_features, bias=True)
+    return model, loaders

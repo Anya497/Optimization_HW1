@@ -37,7 +37,9 @@ def save_results(model, loaders, output_dir, name, history, metrics, settings) -
     axes[0].set(xlabel="Updates", ylabel="BCE loss")
     axes[0].legend()
 
-    points, labels = loaders["test"].dataset.tensors
+    point_batches, label_batches = zip(*loaders["test"])
+    points = torch.cat(point_batches)
+    labels = torch.cat(label_batches).reshape(-1)
     lower, upper = points.min(dim=0).values - 0.3, points.max(dim=0).values + 0.3
     xx, yy = torch.meshgrid(torch.linspace(lower[0], upper[0], 150),
                            torch.linspace(lower[1], upper[1], 150), indexing="xy")
@@ -48,7 +50,7 @@ def save_results(model, loaders, output_dir, name, history, metrics, settings) -
                      vmin=0, vmax=1, cmap="coolwarm", alpha=0.4)
     axes[1].contour(xx.numpy(), yy.numpy(), logits.numpy(), levels=[0], colors="black")
     axes[1].scatter(points[:, 0], points[:, 1], c=labels, cmap="coolwarm", vmin=0, vmax=1, s=8)
-    axes[1].set(xlabel="a1", ylabel="a2", title=f"Test data seed {settings['data_seed'] + 2}")
+    axes[1].set(xlabel="a1", ylabel="a2", title="Test set")
     figure.suptitle(f"{name}: seed={settings['seed']}, sigma={settings['gradient_noise']}")
     figure.tight_layout()
     figure.savefig(output / "plots.png", dpi=150)

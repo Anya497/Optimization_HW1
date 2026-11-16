@@ -46,7 +46,8 @@ def evaluate(model: nn.Module, loader: DataLoader) -> dict[str, float]:
     model.eval()
     loss, correct, count = 0.0, 0, 0
     for x, y in loader:
-        logits = model(x)
+        logits = model(x).reshape(-1)
+        y = y.reshape(-1)
         loss += F.binary_cross_entropy_with_logits(logits, y, reduction="sum").item()
         correct += ((logits >= 0) == y.bool()).sum().item()
         count += y.numel()
@@ -62,7 +63,7 @@ def train(
     seed: int = 0,
     eval_every: int = 50,
 ) -> tuple[list[dict], dict]:
-    """Train with the RobustSGD optimizer interface from the optimizer PR.
+    """Train with RobustSGD.
 
     Pass per-example observations to step(noisy_grads={parameter: gradients}).
     The optimizer computes gradient means, uncertainty, and parameter updates.

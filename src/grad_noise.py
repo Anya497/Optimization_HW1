@@ -30,8 +30,8 @@ def per_example_gradients(
     parameters = dict(model.named_parameters())
 
     def example_loss(params, point, label):
-        logit = functional_call(model, params, (point,))
-        return F.binary_cross_entropy_with_logits(logit, label)
+        logit = functional_call(model, params, (point,)).reshape(())
+        return F.binary_cross_entropy_with_logits(logit, label.reshape(()))
 
     gradients = vmap(grad(example_loss), in_dims=(None, 0, 0))(parameters, x, y)
     return {parameter: gradients[name].detach() for name, parameter in parameters.items()}
