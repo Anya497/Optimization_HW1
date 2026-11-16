@@ -83,8 +83,9 @@ def test_optimality_condition():
     direction = run_rsgd(mean_grad, var, rho, lr)
 
     assert torch.linalg.norm(direction) > 0
-    denominator = torch.sqrt(torch.sum(var * direction.square()))
-    residual = (mean_grad + rho * var * direction / denominator + direction / lr)
+    uncertainty = var + 0.0002  # Equation (4): 1e-3 * mean([0.1, 0.2, 0.3]).
+    denominator = torch.sqrt(torch.sum(uncertainty * direction.square()))
+    residual = (mean_grad + rho * uncertainty * direction / denominator + direction / lr)
 
     assert torch.linalg.norm(residual) < 1e-8
 
@@ -104,6 +105,29 @@ def test_default_step_matches_torch_sgd():
 
     optimizer_sgd.step()
     assert torch.allclose(p_rsgd, p_sgd, atol=1e-10)
+
+
+def test_ridge_is_shared_across_all_parameters():
+    first = torch.nn.Parameter(torch.zeros(1, dtype=torch.float64))
+    second = torch.nn.Parameter(torch.zeros(1, dtype=torch.float64))
+    noisy_grads = {
+        first: torch.tensor([[-100.0], [100.0]], dtype=torch.float64),
+        second: torch.ones(2, 1, dtype=torch.float64),
+    }
+    optimizer = RobustSGD([first, second], lr=0.1, rho=1.0)
+    optimizer.step(noisy_grads=noisy_grads)
+
+    # Raw variances [10000, 0] give a shared ridge of 5 and g^T S^-1 g = 0.2.
+    assert torch.equal(first, torch.zeros_like(first))
+    assert torch.equal(second, torch.zeros_like(second))
+
+
+def test_ridge_floor_with_constant_observations():
+    mean_grad = torch.tensor([2e-6], dtype=torch.float64)
+    direction = run_rsgd(mean_grad, torch.zeros_like(mean_grad), rho=1.0)
+
+    # Zero raw variance gives S=1e-11 and g^T S^-1 g=0.4, so the step is zero.
+    assert torch.equal(direction, torch.zeros_like(direction))
 
 
 def test_single_gradient_sample_raises_error():
