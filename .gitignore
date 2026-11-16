@@ -220,3 +220,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 .vscode/
+
+# Local simulation outputs and plotting cache
+results/
+.matplotlib/
