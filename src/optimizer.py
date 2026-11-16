@@ -29,7 +29,7 @@ class RobustSGD(Optimizer):
                 loss = closure()
 
         if noisy_grads is None:
-            for group in self.param_group:
+            for group in self.param_groups:
                 for p in group["params"]:
                     if p.grad is not None:
                         p.add_(p.grad, alpha=-group["lr"])
@@ -91,7 +91,8 @@ class RobustSGD(Optimizer):
         g = torch.cat(grads)
         S = torch.cat(uncertainties)
         lr = torch.cat(learning_rates)
-        S = S.clamp_min(eps)
+        epsilon = 1e-3 * S.mean().clamp_min(1e-8)
+        S = S + epsilon
 
         if rho == 0:
             direction = -lr * g
