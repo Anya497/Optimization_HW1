@@ -31,10 +31,9 @@ def create_minibatch_dataloader(dataset, batch_size: int, seed: int, updates: in
 
 
 def make_dataset(size: int, sampler, seed: int) -> TensorDataset:
-    """Generate an even-sized balanced dataset with sampler(labels, generator)."""
+    """Seed sampler(size, generator), then shuffle and package its points and labels."""
     generator = torch.Generator().manual_seed(seed)
-    labels = torch.cat((torch.zeros(size // 2), torch.ones(size // 2)))
-    points = sampler(labels, generator)
+    points, labels = sampler(size, generator)
     order = torch.randperm(size, generator=generator)
     return TensorDataset(points[order], labels[order])
 

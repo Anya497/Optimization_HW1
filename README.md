@@ -7,7 +7,7 @@ SGD versus Robust SGD under Gradient Uncertainty
 
 ## Project layout
 
-- `src/data/log_regression.py`: Simulation 1 Gaussian sampler and legacy list generator.
+- `src/data/log_regression.py`: Simulation 1 Gaussian sampler with Bernoulli labels.
 - `src/data/semicircles.py`: Simulation 2 semicircle sampler.
 - `src/data/common.py`: shared `make_dataset`/`make_loaders`, splitting, and batch sampling.
 - `src/models.py`: the two-layer network; Simulation 1 uses `torch.nn.Linear`.
@@ -33,12 +33,15 @@ loaders = make_loaders(sample_logreg, batch_size=32, updates=1000)
 loaders = make_loaders(sample_semicircles, batch_size=32, updates=1000)
 ```
 
-Each sampler accepts `(labels, generator)` and returns points shaped `(n, 2)`.
-The shared factory creates balanced labels, seeds the generator, shuffles the
-examples, and returns a `TensorDataset` with scalar labels. Use even split sizes.
-The loader factory creates separate training/validation/test datasets and samples
-training batches with replacement. The legacy `get_cls_data` list generator
-remains available, and the plotting helper continues to support its format.
+Each sampler accepts `(size, generator)` and returns `(points, labels)` shaped
+`(n, 2)` and `(n,)`. The Gaussian sampler draws half its labels with Bernoulli(0.5)
+and pairs them with their complements to keep equal class counts. Both samplers
+produce balanced labels; use even split sizes.
+
+The shared factory seeds the generator, shuffles the examples, and returns a
+`TensorDataset` with scalar labels. The loader factory creates separate
+training/validation/test datasets and samples training batches with replacement.
+Plotting also supports list-based datasets with one-element labels.
 
 ## Simulation 2
 

@@ -25,7 +25,8 @@ def points_from_angles(
     )
 
 
-def sample_points(labels: torch.Tensor, generator: torch.Generator) -> torch.Tensor:
-    """Sample Simulation 2 points for the supplied class labels."""
-    angles = sample_angles(len(labels), generator)
-    return points_from_angles(angles, labels, generator)
+def sample_points(size: int, generator: torch.Generator) -> tuple[torch.Tensor, torch.Tensor]:
+    """Sample balanced semicircle points and their labels."""
+    labels = torch.cat((torch.zeros(size // 2), torch.ones(size // 2)))
+    angles = sample_angles(size, generator)
+    return points_from_angles(angles, labels, generator), labels
