@@ -28,6 +28,14 @@ class RobustSGD(Optimizer):
             with torch.enable_grad():
                 loss = closure()
 
+        if noisy_grads is None:
+            for group in self.param_group:
+                for p in group["params"]:
+                    if p.grad is not None:
+                        p.add_(p.grad, alpha=-group["lr"])
+
+            return loss
+
         grads = []
         uncertainties = []
         learning_rates = []
@@ -121,7 +129,7 @@ class RobustSGD(Optimizer):
             numel = p.numel()
             d = direction[offset:offset + numel]
             d = d.reshape_as(p)
-            p.add_(p)
+            p.add_(d)
             offset += numel
 
         return loss
