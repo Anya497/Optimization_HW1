@@ -2,6 +2,7 @@ from src.data.log_regression import get_cls_data
 from torch.nn import Linear
 from common import setup_seed
 
+
 def main():
     seed = 1024
     setup_seed(seed)

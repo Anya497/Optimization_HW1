@@ -1,7 +1,7 @@
 from typing import Iterator
 
 import torch
-from grad_noise import compute_noisy_per_example_grads
+from src.grad_noise import compute_noisy_per_example_grads
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
@@ -21,17 +21,15 @@ def train_with_noise(
 ):
     it = iter(loader)
 
-    def sample_batch(it: Iterator):
+    for step in range(n_steps):
         try:
-            X_b, y_b = next(it)
+            X_batch, y_batch = next(it)
         except StopIteration:
             it = iter(loader)
-            X_b, y_b = next(it)
-        return X_b, y_b
-
-    for step in range(n_steps):
-        X_batch, y_batch = sample_batch(it)
+            X_batch, y_batch = next(it)
         logits = model(X_batch).squeeze(-1)
-        losses = F.binary_cross_entropy_with_logits(logits, y_batch, reduction="none")
+        losses = F.binary_cross_entropy_with_logits(
+            logits, y_batch.squeeze(-1), reduction="none"
+        )
         V = compute_noisy_per_example_grads(model, losses, sigma)
         optimizer.step(V)

@@ -15,7 +15,12 @@ def split_dataset(dataset: list, train_frac: float, val_frac: float) -> tuple:
 
 
 def create_minibatch_dataloader(dataset: list, batch_size: int, seed: int):
-    sampler = RandomSampler(dataset, replacement=True, num_samples=batch_size)
+    sampler = RandomSampler(
+        dataset,
+        replacement=True,
+        num_samples=batch_size,
+        generator=torch.Generator().manual_seed(seed),
+    )
     loader = DataLoader(
         dataset,
         batch_size=batch_size,

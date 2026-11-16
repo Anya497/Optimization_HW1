@@ -7,9 +7,6 @@ def get_cls_data(
     dataset = list()
     for _ in range(n_points):
         y = torch.bernoulli(torch.tensor([y_prob]))
-        x = torch.normal(
-            torch.fill(torch.empty(features_num), 2 * y - 1),
-            std=torch.eye(features_num),
-        )
+        x = (2 * y - 1) + torch.randn(features_num)
         dataset.append((x, y))
     return dataset
