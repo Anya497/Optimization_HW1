@@ -1,8 +1,9 @@
-"""Simulation 2 entry point using the incoming RobustSGD optimizer interface."""
+"""Simulation 2 entry point using RobustSGD."""
 
 import torch
 
-from src.data.semicircles import make_loaders
+from src.data.common import make_loaders
+from src.data.semicircles import sample_points
 from src.models import SemicircleNet
 from src.train import train
 
@@ -30,7 +31,7 @@ def run_experiment(
     """Create fresh data/model for a paired run, train, and save its outputs."""
     model = SemicircleNet(seed=seed)
     optimizer = optimizer_cls(model.parameters(), lr=learning_rate, rho=rho)
-    loaders = make_loaders(train_size, validation_size, test_size, batch_size,
+    loaders = make_loaders(sample_points, train_size, validation_size, test_size, batch_size,
                            updates, data_seed, seed)
     history, metrics = train(model, loaders, optimizer, decay_scale=decay_scale,
                              gradient_noise=gradient_noise, seed=seed, eval_every=eval_every)
