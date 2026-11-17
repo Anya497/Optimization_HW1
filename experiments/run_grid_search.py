@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> dict:
     )
     destination = Path(args.output_dir) / args.experiment / "grid_search"
     print(
-        f"{args.experiment}: SGD lr={summary['sgd']['learning_rate']}, "
+        f"{args.experiment}: "
         f"RSGD lr={summary['rsgd']['learning_rate']} rho={summary['rsgd']['rho']}; "
         f"results in {destination}"
     )

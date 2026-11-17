@@ -317,19 +317,12 @@ def run_grid_search(
             output_dir=str(root), save=False, **settings,
         )
 
-    sgd_grid = sweep_grid(
-        lambda lr, rho, seed: tune(lr, rho, seed, f"sgd_lr_{lr}"),
-        lr_grid, (0.0,), seeds,
-        method="sgd", failures=failures, data_seed=data_seed,
-        resolve_data_seed=seed_data,
-    )
     rsgd_grid = sweep_grid(
         lambda lr, rho, seed: tune(lr, rho, seed, f"rsgd_lr_{lr}_rho_{rho}"),
         lr_grid, rho_grid, seeds,
         method="rsgd", failures=failures, data_seed=data_seed,
         resolve_data_seed=seed_data,
     )
-    sgd_lr = select_best_parameters(sgd_grid)[0]
     rsgd_lr, rsgd_rho = select_best_parameters(rsgd_grid)
 
     def gradient_scale(learning_rate: float, rho: float) -> dict:
@@ -354,7 +347,6 @@ def run_grid_search(
         return {"scale": sum(per_seed) / len(per_seed), "per_seed": per_seed}
 
     scales = {
-        "sgd": gradient_scale(sgd_lr, 0.0),
         "rsgd": gradient_scale(rsgd_lr, rsgd_rho),
     }
     noise_grids = {
@@ -362,35 +354,33 @@ def run_grid_search(
         for method in scales
     }
 
-    def sweep_noise(method: str, lr: float, rho: float) -> list[dict]:
+    def sweep_noise(method: str, lr: float) -> list[dict]:
         rows = []
         for seed in seeds:
             for noise in noise_grids[method]:
-                setup_seed(seed)
-                try:
-                    metrics = runner(
-                        optimizer_cls,
-                        name=f"noise_sweep/{method}_lr_{lr}_rho_{rho}",
-                        rho=rho, seed=seed, learning_rate=lr, gradient_noise=noise,
-                        data_seed=seed_data(seed), output_dir=str(root), **settings,
-                    )
-                except Exception as error:
-                    record_failure(
-                        failures, phase="noise", method=method, learning_rate=lr,
-                        rho=rho, seed=seed, gradient_noise=noise,
-                        data_seed=seed_data(seed), error=error,
-                    )
-                    continue
-                rows.append({
-                    "method": method, "learning_rate": lr, "rho": rho,
-                    "seed": seed, "gradient_noise": noise, **metrics,
-                })
+                for rho in rho_grid:
+                    setup_seed(seed)
+                    try:
+                        metrics = runner(
+                            optimizer_cls,
+                            name=f"noise_sweep/{method}_lr_{lr}_rho_{rho}",
+                            rho=rho, seed=seed, learning_rate=lr, gradient_noise=noise,
+                            data_seed=seed_data(seed), output_dir=str(root), **settings,
+                        )
+                    except Exception as error:
+                        record_failure(
+                            failures, phase="noise", method=method, learning_rate=lr,
+                            rho=rho, seed=seed, gradient_noise=noise,
+                            data_seed=seed_data(seed), error=error,
+                        )
+                        continue
+                    rows.append({
+                        "method": method, "learning_rate": lr, "rho": rho,
+                        "seed": seed, "gradient_noise": noise, **metrics,
+                    })
         return rows
 
-    noise_rows = (
-        sweep_noise("sgd", sgd_lr, 0.0)
-        + sweep_noise("rsgd", rsgd_lr, rsgd_rho)
-    )
+    noise_rows = sweep_noise("rsgd", rsgd_lr)
 
     sensitivity_rows: list[dict] = []
     sensitivity_seed = (
@@ -398,9 +388,7 @@ def run_grid_search(
     )
     if data_seeds is not None:
         for sensitivity_data_seed in data_seeds:
-            for method, lr, rho in (
-                ("sgd", sgd_lr, 0.0), ("rsgd", rsgd_lr, rsgd_rho),
-            ):
+            for method, lr, rho in (("rsgd", rsgd_lr, rsgd_rho)):
                 for noise in noise_grids[method]:
                     setup_seed(sensitivity_seed)
                     try:
@@ -429,14 +417,10 @@ def run_grid_search(
             sensitivity_rows, ("method", "gradient_noise"),
         ))
 
-    sgd_rows = [
-        {"method": "sgd", **row} for rows in sgd_grid.values() for row in rows
-    ]
     rsgd_rows = [
         {"method": "rsgd", **row} for rows in rsgd_grid.values() for row in rows
     ]
-    tuning_rows = sgd_rows + rsgd_rows
-    write_csv(root / "sgd_lr_grid.csv", sgd_rows)
+    tuning_rows = rsgd_rows
     write_csv(root / "rsgd_lr_rho_grid.csv", rsgd_rows)
     write_csv(root / "tuning_aggregated.csv", aggregate_metrics(
         tuning_rows, ("method", "learning_rate", "rho"),
@@ -462,11 +446,6 @@ def run_grid_search(
         },
         "run_settings": settings,
         "data_seed": data_seed,
-        "sgd": {
-            "learning_rate": sgd_lr,
-            "rho": 0.0,
-            "mean_validation_loss": mean_validation_loss(sgd_grid[(sgd_lr, 0.0)]),
-        },
         "rsgd": {
             "learning_rate": rsgd_lr,
             "rho": rsgd_rho,
