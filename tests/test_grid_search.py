@@ -75,6 +75,11 @@ def test_grid_search_records_every_point_and_selects_with_fake_runner(tmp_path):
     assert summary["rsgd"]["learning_rate"] == 0.1
     assert summary["rsgd"]["rho"] == 0.0
     assert len(calls) == 20
+    sgd_calls = [settings for name, settings in calls if name.startswith("tuning/sgd")]
+    rsgd_calls = [settings for name, settings in calls if name.startswith("tuning/rsgd")]
+    assert len(sgd_calls) == 4 and len(rsgd_calls) == 8
+    assert {settings["rho"] for settings in sgd_calls} == {0.0}
+    assert 0.0 in {settings["rho"] for settings in rsgd_calls}
     assert sum(settings.get("save") is False for _, settings in calls) == 12
     root = tmp_path / "fake" / "grid_search"
     with (root / "sgd_lr_grid.csv").open() as stream:
