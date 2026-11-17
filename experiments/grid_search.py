@@ -323,6 +323,7 @@ def run_grid_search(
     data_seeds: Sequence[int] | None = None,
     data_sensitivity_seed: int | None = None,
     run_settings: dict | None = None,
+    plot_runs: bool = False,
 ) -> dict:
     """Sweep hyperparameters, select on validation loss, and sweep noise.
 
@@ -433,6 +434,7 @@ def run_grid_search(
                             gradient_noise=noise,
                             data_seed=seed_data(seed),
                             output_dir=str(root),
+                            plot=plot_runs,
                             **settings,
                         )
                     except Exception as error:

@@ -1,17 +1,5 @@
-import random
 import torch
 from torch.utils.data import RandomSampler, DataLoader, TensorDataset
-
-
-def split_dataset(dataset: list, train_frac: float, val_frac: float) -> tuple:
-    random.shuffle(dataset)
-    dataset_len = len(dataset)
-    train_number = int(train_frac * dataset_len)
-    val_number = int(val_frac * dataset_len)
-    train_dataset = dataset[:train_number]
-    val_dataset = dataset[train_number : train_number + val_number]
-    test_dataset = dataset[train_number + val_number :]
-    return train_dataset, val_dataset, test_dataset
 
 
 def create_minibatch_dataloader(dataset, batch_size: int, seed: int, updates: int = 1):

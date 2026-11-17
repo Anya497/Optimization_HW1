@@ -335,12 +335,14 @@ def test_failed_noise_run_is_recorded_and_sweep_continues(tmp_path):
         assert len(list(csv.DictReader(stream))) == 7
 
 
-def test_grid_search_saves_full_artifacts_for_noise_sweep(tmp_path):
+@pytest.mark.parametrize("plot_runs", [False, True])
+def test_grid_search_saves_artifacts_with_optional_run_plots(tmp_path, plot_runs):
     summary = run_grid_search(
         run_logreg,
         LogReg,
         sample_logreg,
         experiment="logreg",
+        plot_runs=plot_runs,
         output_dir=tmp_path,
         lr_grid=(0.1,),
         rho_grid=(0.0,),
@@ -365,7 +367,7 @@ def test_grid_search_saves_full_artifacts_for_noise_sweep(tmp_path):
     assert summary["noise_grid"]["sgd"] == summary["noise_grid"]["rsgd"]
     assert summary["noise_grid"]["rsgd"][0] == 0.0
     assert len(list((root / "noise_sweep").rglob("metrics.json"))) == 4
-    assert len(list((root / "noise_sweep").rglob("plots.png"))) == 4
+    assert len(list((root / "noise_sweep").rglob("plots.png"))) == (4 if plot_runs else 0)
 
 
 @pytest.mark.parametrize("experiment", ["logreg", "semicircle"])
