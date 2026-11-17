@@ -174,8 +174,8 @@ Outputs are written under `results/<experiment>/grid_search/`:
 - `noise_sweep_summary.csv`: every method/seed/noise run and its metrics.
 - `selection.json`: chosen parameters, mean validation losses, per-seed scales,
   and the resulting noise grids.
-- `tuning/`, `noise_sweep/`: saved run artifacts; `tuning/` is empty because
-  tuning runs use `save=False`, and `noise_sweep/` contains one folder per run.
+- `noise_sweep/`: one folder of saved run artifacts per method and selected
+  parameter pair. Tuning runs use `save=False`, so no `tuning/` folder is written.
 
 Run the search from the repository root:
 
