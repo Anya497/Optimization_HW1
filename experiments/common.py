@@ -32,11 +32,12 @@ def run_experiment(
     eval_every: int = 50,
     output_dir: str = "results",
     save: bool = True,
+    plot: bool = True,
 ) -> dict:
     """Create fresh data/model for a paired run, train, and save its outputs.
 
     Set ``save=False`` for tuning points whose metrics are recorded by the
-    caller; full artifacts are only written for the final runs.
+    caller. Set ``plot=False`` to save data and weights without per-run figures.
     """
     model = model_factory(seed=seed)
     optimizer = optimizer_cls(model.parameters(), lr=learning_rate, rho=rho)
@@ -56,7 +57,7 @@ def run_experiment(
         "eval_every": eval_every, "rho": rho,
     }
     if save:
-        save_results(model, loaders, output_dir, name, history, metrics, settings)
+        save_results(model, loaders, output_dir, name, history, metrics, settings, plot=plot)
     return metrics
 
 
@@ -65,12 +66,8 @@ def setup_seed(seed: int):
     random.seed(seed)
 
 
-def save_results(model, loaders, output_dir, name, history, metrics, settings) -> Path:
-    """Save one run's settings, metrics, losses, weights, and decision boundary."""
-    import matplotlib
-    matplotlib.use("Agg")
-    from matplotlib import pyplot as plt
-
+def save_results(model, loaders, output_dir, name, history, metrics, settings, plot=True) -> Path:
+    """Save one run's data and weights, optionally including a figure."""
     run_name = (f"seed_{settings['seed']}_sigma_{settings['gradient_noise']}"
                 f"_lr_{settings['learning_rate']}")
     output = Path(output_dir) / name / run_name
@@ -83,6 +80,13 @@ def save_results(model, loaders, output_dir, name, history, metrics, settings) -
         writer.writeheader()
         writer.writerows(history)
     torch.save(model.state_dict(), output / "model.pt")
+
+    if not plot:
+        return output
+
+    import matplotlib
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
 
     figure, axes = plt.subplots(1, 2, figsize=(10, 4))
     for key, label in (("train_loss", "Training"), ("validation_loss", "Validation")):

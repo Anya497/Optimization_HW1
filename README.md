@@ -155,7 +155,7 @@ The local checks and output-generation smoke run used Python 3.12.14 and PyTorch
 ## Hyperparameter grid search
 
 `experiments.grid_search.run_grid_search` drives both simulations. The SGD
-series varies `learning_rate` over `{1e-3, 1e-2, 1e-1, 1}` at `rho=0`; the RSGD
+series varies `learning_rate` over `{1e-2, 1e-1, 1, 3, 10}` at `rho=0`; the RSGD
 series varies the same learning rates over `rho` in `{0, 0.1, 0.3, 1.0, 3.0}`
 (`rho=0` included). Each point runs for seeds `{1, 2, 3, 4, 5}`, and the point
 with the smallest **mean validation loss** across seeds is selected; test data
@@ -164,9 +164,14 @@ is never used for selection.
 The gradient-noise scale is measured from 50 warmup updates at the selected
 parameters: for each update take the mean L2 norm of the flattened per-example
 gradients and divide by `sqrt(number of trainable parameters)`, then average
-over seeds. Each method has its own scale; the sweep uses
-`scale * {0, 0.1, 0.3, 1, 2.5}` for both SGD and RSGD. These runs save the full
-per-run artifacts; tuning points only contribute metrics to the summary tables.
+over seeds. One scale is measured using the selected RSGD settings; both methods
+use the same absolute noise levels, `scale * {0, 0.1, 0.3, 1, 2.5}`. SGD uses
+its selected learning rate at rho=0; RSGD sweeps every radius at its selected
+learning rate. Noise runs save metrics, loss histories and weights. Add
+`--plot-runs` to also save each run's figure; the default skips those figures
+because the report plotter compares the saved runs together. Tuning points only
+contribute metrics to the summary tables. Standalone simulation runners still
+create per-run figures by default; pass `plot=False` to skip them.
 
 Outputs are written under `results/<experiment>/grid_search/`:
 
@@ -180,18 +185,18 @@ Outputs are written under `results/<experiment>/grid_search/`:
   any failed seed is dropped from selection so all remaining points use the
   same number of seeds; failed noise runs are skipped but recorded.
 - `dataset_sensitivity.csv`, `dataset_sensitivity_aggregated.csv`: written only
-  with `--data-seeds`; both selected methods run at one fixed training seed over
+  with `--data-seeds`; the selected RSGD setting runs at one fixed training seed over
   every data seed and noise level. Its aggregated std isolates dataset
   uncertainty, while `noise_sweep_aggregated.csv` isolates training randomness
   when a single `--data-seed` is used.
 - `selection.json`: chosen parameters, mean validation losses, per-seed scales,
   noise grids, a `variability` block, a `dataset_sensitivity` block, and a
   `search_budget` block with run/update/gradient-evaluation counts for tuning,
-  noise sweep, dataset study, and the two per-seed warmups. Warmup updates are
+  noise sweep, dataset study, and the one per-seed warmup. Warmup updates are
   included in the update totals but not in `total_runs`; failed runs are reported
   separately and excluded from the completed-run counts.
-- `noise_sweep/`: one folder of saved run artifacts per method and selected
-  parameter pair. Tuning runs use `save=False`, so no `tuning/` folder is written.
+- `noise_sweep/`: one folder of saved run artifacts per method, learning rate and
+  radius. Tuning runs use `save=False`, so no `tuning/` folder is written.
 
 Run the search from the repository root:
 
@@ -209,7 +214,7 @@ dataset (`data_seed=seed`), so spread combines training and dataset randomness;
 `--data-seed` pins one dataset for all seeds so methods stay paired and spread
 reflects training randomness only. To measure dataset uncertainty separately,
 use `--data-seeds 1,2,3` instead: the main grid uses the first value as its fixed
-dataset, then both selected methods are rerun at every data seed with one fixed
+dataset, then the selected RSGD setting is rerun at every data seed with one fixed
 training seed (`--data-sensitivity-seed`, default: first training seed). The two
 flags are mutually exclusive. See `--help` for the full list.
 
@@ -225,3 +230,12 @@ summary matrices in JSON, and every sampled diagonal and ridge in CSV.
 The second heatmap row shows batch size times mean S to check the expected
 approximately inverse-batch-size scaling. Each row uses a shared colour scale.
 The off-diagonal entries are zero because the homework specifies a diagonal S.
+
+## Report figures
+
+After a grid search, run `python -m experiments.plot_results results/logreg/grid_search --seed 1`
+(or use `results/semicircle/grid_search`). It reads the existing results and saves
+five comparison figures under `grid_search/plots/`, reusing the grid search's
+existing aggregated metric table.
+See [experiments/plots.md](experiments/plots.md) for the PDF requirements, exact
+figure list, error-bar definitions, and reduced-budget verification examples.

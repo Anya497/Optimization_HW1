@@ -49,6 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--experiment", choices=EXPERIMENTS, required=True)
     parser.add_argument("--output-dir", default="results")
+    parser.add_argument("--plot-runs", action="store_true", help="Also save a figure for every noise-sweep run")
     parser.add_argument("--seeds", type=_ints, default=SEEDS)
     parser.add_argument("--lr-grid", type=_floats, default=LEARNING_RATES)
     parser.add_argument("--rho-grid", type=_floats, default=RHOS)
@@ -92,6 +93,7 @@ def main(argv: list[str] | None = None) -> dict:
         data_seeds=args.data_seeds,
         data_sensitivity_seed=args.data_sensitivity_seed,
         run_settings=run_settings,
+        plot_runs=args.plot_runs,
     )
     destination = Path(args.output_dir) / args.experiment / "grid_search"
     print(

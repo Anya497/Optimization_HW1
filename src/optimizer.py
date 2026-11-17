@@ -9,13 +9,11 @@ class RobustSGD(Optimizer):
         params,
         lr=0.1,
         rho=1.0,
-        eps=1e-12,
         max_iter=80      
     ):
         defaults = dict(
             lr=lr,
             rho=rho,
-            eps=eps,
             max_iter=max_iter
         )
 
@@ -44,43 +42,33 @@ class RobustSGD(Optimizer):
         params = []
 
         rho_vals = set()
-        eps_vals = set()
         max_iter_vals = set()
 
         for group in self.param_groups:
             lr = group["lr"]
             rho = group["rho"]
-            eps = group["eps"]
             max_iter = group["max_iter"]
 
             rho_vals.add(rho)
-            eps_vals.add(eps)
             max_iter_vals.add(max_iter)
 
             for p in group["params"]:
 
-                if noisy_grads is None:
+                if p not in noisy_grads:
                     if p.grad is None:
                         continue
 
-                    g = p.grad.detach()
-                    S = torch.zeros_like(g)
-                else:
-                    if p not in noisy_grads:
-                        if p.grad is None:
-                            continue
+                per_sample_grads = noisy_grads[p].detach() # (B, *p.shape)
+                if per_sample_grads.shape[0] < 2:
+                    raise ValueError(
+                        "RobustSGD needs at least two gradient observations "
+                        "to estimate uncertainty"
+                    )
 
-                    per_sample_grads = noisy_grads[p].detach() # (B, *p.shape)
-                    if per_sample_grads.shape[0] < 2:
-                        raise ValueError(
-                            "RobustSGD needs at least two gradient observations "
-                            "to estimate uncertainty"
-                        )
-
-                    g = per_sample_grads.mean(dim=0)
-                    centered = per_sample_grads - g.unsqueeze(0)
-                    B = per_sample_grads.shape[0]
-                    S = centered.square().sum(dim=0) / (B * (B - 1))
+                g = per_sample_grads.mean(dim=0)
+                centered = per_sample_grads - g.unsqueeze(0)
+                B = per_sample_grads.shape[0]
+                S = centered.square().sum(dim=0) / (B * (B - 1))
 
                 params.append(p)
                 grads.append(g.reshape(-1))
@@ -92,7 +80,6 @@ class RobustSGD(Optimizer):
             return loss
 
         rho = next(iter(rho_vals))
-        eps = next(iter(eps_vals))
         max_iter = next(iter(max_iter_vals))
 
         g = torch.cat(grads)
@@ -115,7 +102,7 @@ class RobustSGD(Optimizer):
                     denom = 1.0 + lam * lr * S
                     return torch.sum(val * (lam / denom).square()) - rho ** 2
 
-                low = torch.zeros_like(rho_tensor := g.new_tensor(0.0))
+                low = g.new_tensor(0.0)
                 high = g.new_tensor(1.0)
 
                 for _ in range(100):
