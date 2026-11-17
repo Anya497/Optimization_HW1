@@ -67,7 +67,7 @@ class TrainingTests(unittest.TestCase):
         history, metrics = train(model, loaders, optimizer, eval_every=2, gradient_noise=0.5)
         self.assertEqual([row["update"] for row in history], [0, 2, 3])
         self.assertEqual(metrics["gradient_evaluations"], 12)
-        self.assertEqual(metrics["zero_step_frequency"], 1)
+        self.assertEqual(metrics["zero_step_frequency"], 0)
         self.assertEqual(history[0]["train_loss"], history[-1]["train_loss"])
         for before, after in zip(original, loaders["train"].dataset.tensors):
             torch.testing.assert_close(before, after)
@@ -81,6 +81,16 @@ class TrainingTests(unittest.TestCase):
         ], dim=1)
         torch.testing.assert_close(optimizer.observations[0], expected)
         torch.testing.assert_close(optimizer.mean_gradients[0], expected.mean(dim=0))
+
+    def test_large_rho_counts_robust_zero_steps(self):
+        loaders = make_loaders(sample_semicircles, train_size=20, validation_size=10,
+                               test_size=10, batch_size=4, updates=3)
+        model = LinearLogit()
+        optimizer = RobustSGD(model.parameters(), lr=0.1, rho=1e8)
+        history, metrics = train(model, loaders, optimizer)
+        self.assertEqual(metrics["zero_steps"], 3)
+        self.assertEqual(metrics["zero_step_frequency"], 1)
+        self.assertEqual(history[0]["train_loss"], history[-1]["train_loss"])
 
     def test_reproducible_training_and_group_learning_rate_schedule(self):
         histories = []

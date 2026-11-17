@@ -20,9 +20,11 @@ class RobustSGD(Optimizer):
         )
 
         super().__init__(params, defaults)
+        self.zero_step = False
 
     @torch.no_grad()
     def step(self, closure=None, noisy_grads=None):
+        self.zero_step = False
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -93,12 +95,13 @@ class RobustSGD(Optimizer):
         lr = torch.cat(learning_rates)
         epsilon = 1e-3 * S.mean().clamp_min(1e-8)
         S = S + epsilon
+        # Report the robust zero-step condition, independent of rounding or the LR.
+        self.zero_step = bool(torch.sum(g.square() / S) <= rho ** 2)
 
         if rho == 0:
             direction = -lr * g
         else:
-            uncertainty_measure = torch.sum(g.square() / S)
-            if uncertainty_measure <= rho ** 2:
+            if self.zero_step:
                 direction = torch.zeros_like(g)
             else:
 
