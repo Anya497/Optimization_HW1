@@ -12,7 +12,10 @@ all results.
 
 - **T1** — Grid-search entry point for `logreg` and `semicircle`, validation-loss
   selection over seeds, warmup-based gradient-noise scale, noise sweep and result
-  persistence. Depends on: nothing. Status: `[open]`.
+  persistence. Depends on: nothing. Status: `[done]` (91c55e4). Outcome:
+  one CLI for both simulations; six commits merged into `anya`; two quick
+  verification runs produced grid CSVs, selection JSON, and 16 saved noise-sweep
+  runs under `/tmp/opencode/grid_smoke`.
 
 Conflicts/overlaps: T1 touches `src/train.py`, `src/optimizer.py`,
 `experiments/common.py`, `experiments/run_logreg_exp.py`,
