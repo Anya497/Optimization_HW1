@@ -16,6 +16,7 @@ SGD versus Robust SGD under Gradient Uncertainty
 - `experiments/run_logreg_exp.py`: Simulation 1 setup using the shared data pipeline.
 - `experiments/run_semicircle_exp.py`: Simulation 2 setup using the shared data pipeline.
 - `experiments/common.py`: shared `run_experiment`, seed setup, saving results, and plotting.
+- `experiments/grid_search.py`: validation-loss selection and gradient-noise sweep.
 - `tests/`: data, gradient, model, and training checks.
 
 ## Shared data pipeline
@@ -109,7 +110,7 @@ recreates its model, data, batches, and gradient-noise stream. `data_seed` fixes
 the dataset independently of `seed`, which controls initialization and training
 randomness. Each experiment creates a fresh optimizer instance for its model.
 Repeat over at least five seeds and noise levels when conducting the full study;
-tuning and cross-run aggregation are left to the experiment caller. Freeze tuned
+the grid-search driver below performs that tuning and aggregation. Freeze tuned
 settings before comparing noise levels and keep test data out of selection.
 
 Each run saves settings/environment metadata, final training/test losses, test
@@ -149,6 +150,31 @@ guarantee that every stored example is visited. The assignment does not require
 epochs; it requires comparable budgets and loss plots against updates.
 The local checks and output-generation smoke run used Python 3.12.14 and PyTorch
 2.15.0; Python 3.13 remains the repository's declared target.
+
+## Hyperparameter grid search
+
+`experiments.grid_search.run_grid_search` drives both simulations. The SGD
+series varies `learning_rate` over `{1e-3, 1e-2, 1e-1, 1}` at `rho=0`; the RSGD
+series varies the same learning rates over `rho` in `{0, 0.1, 0.3, 1.0, 3.0}`
+(`rho=0` included). Each point runs for seeds `{1, 2, 3, 4, 5}`, and the point
+with the smallest **mean validation loss** across seeds is selected; test data
+is never used for selection.
+
+The gradient-noise scale is measured from 50 warmup updates at the selected
+parameters: for each update take the mean L2 norm of the flattened per-example
+gradients and divide by `sqrt(number of trainable parameters)`, then average
+over seeds. Each method has its own scale; the sweep uses
+`scale * {0, 0.1, 0.3, 1, 2.5}` for both SGD and RSGD. These runs save the full
+per-run artifacts; tuning points only contribute metrics to the summary tables.
+
+Outputs are written under `results/<experiment>/grid_search/`:
+
+- `sgd_lr_grid.csv`, `rsgd_lr_rho_grid.csv`: every tuning point for every seed.
+- `noise_sweep_summary.csv`: every method/seed/noise run and its metrics.
+- `selection.json`: chosen parameters, mean validation losses, per-seed scales,
+  and the resulting noise grids.
+- `tuning/`, `noise_sweep/`: saved run artifacts; `tuning/` is empty because
+  tuning runs use `save=False`, and `noise_sweep/` contains one folder per run.
 
 ## Batch-size uncertainty check
 

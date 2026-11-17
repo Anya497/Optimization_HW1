@@ -31,8 +31,13 @@ def run_experiment(
     gradient_noise: float = 0.0,
     eval_every: int = 50,
     output_dir: str = "results",
+    save: bool = True,
 ) -> dict:
-    """Create fresh data/model for a paired run, train, and save its outputs."""
+    """Create fresh data/model for a paired run, train, and save its outputs.
+
+    Set ``save=False`` for tuning points whose metrics are recorded by the
+    caller; full artifacts are only written for the final runs.
+    """
     model = model_factory(seed=seed)
     optimizer = optimizer_cls(model.parameters(), lr=learning_rate, rho=rho)
     loaders = make_loaders(
@@ -50,7 +55,8 @@ def run_experiment(
         "decay_scale": decay_scale, "gradient_noise": gradient_noise,
         "eval_every": eval_every, "rho": rho,
     }
-    save_results(model, loaders, output_dir, name, history, metrics, settings)
+    if save:
+        save_results(model, loaders, output_dir, name, history, metrics, settings)
     return metrics
 
 
