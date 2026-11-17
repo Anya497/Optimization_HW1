@@ -133,6 +133,56 @@ def aggregate_metrics(
     return aggregated
 
 
+def search_budget(
+    *,
+    tuning_rows: Sequence[dict],
+    noise_rows: Sequence[dict],
+    sensitivity_rows: Sequence[dict],
+    settings: dict,
+    seeds: Sequence[int],
+    warmup_updates: int,
+    failed_runs: int,
+) -> dict:
+    """Count completed runs, optimizer updates, and gradient evaluations.
+
+    Warmup updates belong to two scale estimations (SGD and RSGD) per seed; they
+    are optimizer updates but not full training runs, so ``total_runs`` excludes
+    them while the update/evaluation totals include them.
+    """
+    updates = settings["updates"]
+    batch_size = settings["batch_size"]
+    warmup_updates_total = 2 * len(seeds) * warmup_updates
+
+    def counts(rows: Sequence[dict]) -> dict:
+        return {
+            "runs": len(rows),
+            "updates": len(rows) * updates,
+            "gradient_evaluations": sum(
+                row.get("gradient_evaluations", 0) for row in rows
+            ),
+        }
+
+    parts = {
+        "tuning": counts(tuning_rows),
+        "noise_sweep": counts(noise_rows),
+        "dataset_sensitivity": counts(sensitivity_rows),
+        "warmup": {
+            "runs": 0,
+            "updates": warmup_updates_total,
+            "gradient_evaluations": warmup_updates_total * batch_size,
+        },
+    }
+    return {
+        **parts,
+        "failed_runs": failed_runs,
+        "total_runs": sum(part["runs"] for part in parts.values()),
+        "total_updates": sum(part["updates"] for part in parts.values()),
+        "total_gradient_evaluations": sum(
+            part["gradient_evaluations"] for part in parts.values()
+        ),
+    }
+
+
 def select_best_parameters(
     results: dict[tuple[float, float], list[dict]],
 ) -> tuple[float, float]:
@@ -369,16 +419,22 @@ def run_grid_search(
     rsgd_rows = [
         {"method": "rsgd", **row} for rows in rsgd_grid.values() for row in rows
     ]
+    tuning_rows = sgd_rows + rsgd_rows
     write_csv(root / "sgd_lr_grid.csv", sgd_rows)
     write_csv(root / "rsgd_lr_rho_grid.csv", rsgd_rows)
     write_csv(root / "tuning_aggregated.csv", aggregate_metrics(
-        sgd_rows + rsgd_rows, ("method", "learning_rate", "rho"),
+        tuning_rows, ("method", "learning_rate", "rho"),
     ))
     write_csv(root / "noise_sweep_summary.csv", noise_rows)
     write_csv(root / "noise_sweep_aggregated.csv", aggregate_metrics(
         noise_rows, ("method", "learning_rate", "rho", "gradient_noise"),
     ))
     write_csv(root / "failed_runs.csv", failures, fieldnames=FAILURE_FIELDS)
+    budget = search_budget(
+        tuning_rows=tuning_rows, noise_rows=noise_rows,
+        sensitivity_rows=sensitivity_rows, settings=settings, seeds=seeds,
+        warmup_updates=warmup_updates, failed_runs=len(failures),
+    )
     summary = {
         "experiment": experiment,
         "selection_rule": "minimum mean validation_loss across seeds",
@@ -402,6 +458,7 @@ def run_grid_search(
         },
         "gradient_scale": scales,
         "noise_grid": noise_grids,
+        "search_budget": budget,
         "dataset_sensitivity": {
             "enabled": data_seeds is not None,
             "training_seed": sensitivity_seed if data_seeds is not None else None,
