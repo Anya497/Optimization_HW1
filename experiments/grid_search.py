@@ -21,7 +21,7 @@ from src.optimizer import RobustSGD
 
 from .common import setup_seed
 
-LEARNING_RATES = (1e-3, 1e-2, 1e-1, 1.0)
+LEARNING_RATES = (1e-2, 1e-1, 1.0, 3.0, 10.0)
 RHOS = (0.0, 0.1, 0.3, 1.0, 3.0)
 SEEDS = (1, 2, 3, 4, 5)
 NOISE_MULTIPLIERS = (0.0, 0.1, 0.3, 1.0, 2.5)
