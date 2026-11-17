@@ -4,29 +4,11 @@ from torch.func import functional_call, grad, vmap
 from torch.nn import functional as F
 
 
-def compute_noisy_per_example_grads(
-    model: torch.nn.Module, losses: torch.Tensor, sigma: float
-):
-    params = [p for p in model.parameters() if p.requires_grad]
-
-    rows = []
-    for i in range(losses.shape[0]):
-        gs = torch.autograd.grad(
-            losses[i],
-            params,
-            retain_graph=(i < losses.shape[0] - 1),
-        )
-        g_i = torch.cat([g.flatten() for g in gs])
-        if sigma > 0:
-            g_i = g_i + sigma * torch.randn_like(g_i)
-        rows.append(g_i)
-    return torch.stack(rows)
-
-
 def per_example_gradients(
-    model: nn.Module, x: torch.Tensor, y: torch.Tensor
+    model: nn.Module, x: torch.Tensor, y: torch.Tensor,
+    sigma: float = 0.0, generator: torch.Generator | None = None,
 ) -> dict[nn.Parameter, torch.Tensor]:
-    """Map each parameter to its gradients shaped (batch_size, *parameter.shape)."""
+    """Return per-example gradients with optional independent Gaussian noise."""
     parameters = dict(model.named_parameters())
 
     def example_loss(params, point, label):
@@ -34,4 +16,12 @@ def per_example_gradients(
         return F.binary_cross_entropy_with_logits(logit, label.reshape(()))
 
     gradients = vmap(grad(example_loss), in_dims=(None, 0, 0))(parameters, x, y)
-    return {parameter: gradients[name].detach() for name, parameter in parameters.items()}
+    observations = {}
+    for name, parameter in parameters.items():
+        values = gradients[name].detach()
+        if sigma > 0:
+            values = values + sigma * torch.randn(
+                values.shape, generator=generator, dtype=values.dtype, device=values.device
+            )
+        observations[parameter] = values
+    return observations

@@ -8,36 +8,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
-from .grad_noise import compute_noisy_per_example_grads, per_example_gradients
-
-
-def eval_bce_with_logits(X, y, model):
-    logits = model(X).squeeze(-1)
-    bce = F.binary_cross_entropy_with_logits(logits, y, reduction="mean")
-    return bce
-
-
-def train_with_noise(
-    model: torch.nn.Module,
-    optimizer: torch.optim.Optimizer,
-    loader: DataLoader,
-    n_steps: int,
-    sigma: float,
-):
-    it = iter(loader)
-
-    for step in range(n_steps):
-        try:
-            X_batch, y_batch = next(it)
-        except StopIteration:
-            it = iter(loader)
-            X_batch, y_batch = next(it)
-        logits = model(X_batch).squeeze(-1)
-        losses = F.binary_cross_entropy_with_logits(
-            logits, y_batch.squeeze(-1), reduction="none"
-        )
-        V = compute_noisy_per_example_grads(model, losses, sigma)
-        optimizer.step(V)
+from .grad_noise import per_example_gradients
 
 
 @torch.no_grad()
@@ -90,18 +61,13 @@ def train(
         step_started = time.perf_counter()
         model.train()
         optimizer.zero_grad()
-        noisy_grads = per_example_gradients(model, x, y)
-        for parameter, gradients in noisy_grads.items():
-            noisy_grads[parameter] = gradients + gradient_noise * torch.randn(
-                gradients.shape, generator=noise_generator, dtype=gradients.dtype
-            )
-        parameters = list(model.parameters())
+        noisy_grads = per_example_gradients(
+            model, x, y, sigma=gradient_noise, generator=noise_generator
+        )
         for group, initial_lr in zip(optimizer.param_groups, initial_lrs):
             group["lr"] = initial_lr / math.sqrt(1 + (update - 1) / decay_scale)
-        previous = [parameter.detach().clone() for parameter in parameters]
         optimizer.step(noisy_grads=noisy_grads)
-        zero_steps += int(all(torch.equal(parameter, before)
-                              for parameter, before in zip(parameters, previous)))
+        zero_steps += int(optimizer.zero_step)
         gradient_evaluations += len(x)
         update_seconds += time.perf_counter() - step_started
         if update % eval_every == 0 or update == updates:

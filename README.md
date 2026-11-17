@@ -11,8 +11,8 @@ SGD versus Robust SGD under Gradient Uncertainty
 - `src/data/semicircles.py`: Simulation 2 semicircle sampler.
 - `src/data/common.py`: shared `make_dataset`/`make_loaders`, splitting, and batch sampling.
 - `src/models.py`: the two-layer network; Simulation 1 uses `torch.nn.Linear`.
-- `src/grad_noise.py`: per-example gradient and noise helpers.
-- `src/train.py`: shared training and evaluation, including the existing `train_with_noise` API.
+- `src/grad_noise.py`: per-example gradients with optional Gaussian noise.
+- `src/train.py`: shared training and evaluation.
 - `experiments/run_logreg_exp.py`: Simulation 1 setup using the shared data pipeline.
 - `experiments/run_semicircle_exp.py`: Simulation 2 orchestration via `run_experiment`.
 - `experiments/common.py`: seed setup, saving results, and plotting.
@@ -77,6 +77,9 @@ The optimizer computes the mean gradient, uncertainty, and parameter updates.
 Learning-rate decay is applied through each parameter group's `lr`, preserving
 any differences between groups. Use `RobustSGD` for both methods: `rho=0` is the
 ordinary SGD baseline, and `rho>0` enables robustness.
+After each step, `optimizer.zero_step` reports whether `g^T S^-1 g <= rho^2`.
+Zero-step frequency counts this condition, rather than unchanged parameters due
+to rounding or a zero learning rate.
 
 ```python
 from experiments.run_semicircle_exp import run_experiment

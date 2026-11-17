@@ -140,3 +140,22 @@ def test_single_gradient_sample_raises_error():
 
     with pytest.raises(ValueError):
         optimizer.step(noisy_grads=noisy_grads)    
+
+
+def test_zero_step_flag_ignores_rounding_and_resets():
+    parameter = torch.nn.Parameter(torch.tensor([1e8]))
+    optimizer = RobustSGD([parameter], lr=0.1, rho=1.0)
+    before = parameter.detach().clone()
+
+    optimizer.step(noisy_grads={parameter: torch.zeros(2, 1)})
+    assert optimizer.zero_step
+
+    optimizer.step(noisy_grads={parameter: torch.ones(2, 1)})
+    assert torch.equal(parameter, before)  # The nonzero update rounds away.
+    assert not optimizer.zero_step
+
+    optimizer.step(noisy_grads={parameter: torch.zeros(2, 1)})
+    assert optimizer.zero_step
+    parameter.grad = torch.ones_like(parameter)
+    optimizer.step()
+    assert not optimizer.zero_step
