@@ -9,6 +9,7 @@ from torch import nn
 from experiments import grid_search
 from experiments.run_grid_search import main
 from experiments.grid_search import (
+    aggregate_metrics,
     estimate_gradient_scale,
     run_grid_search,
     select_best_parameters,
@@ -33,6 +34,19 @@ def test_selection_uses_mean_validation_loss_and_breaks_ties_on_grid_order():
         (0.1, 0.0): [{"validation_loss": 0.5}],
     }
     assert select_best_parameters(tied) == (0.1, 0.0)
+
+
+def test_aggregate_metrics_reports_sample_mean_and_std():
+    rows = [
+        {"method": "sgd", "validation_loss": 1.0, "test_accuracy": 0.5},
+        {"method": "sgd", "validation_loss": 3.0, "test_accuracy": 0.7},
+    ]
+    result = aggregate_metrics(rows, ("method",))[0]
+    assert result["method"] == "sgd" and result["n_runs"] == 2
+    assert math.isclose(result["validation_loss_mean"], 2.0)
+    assert math.isclose(result["validation_loss_std"], math.sqrt(2))
+    assert math.isclose(result["test_accuracy_mean"], 0.6)
+    assert math.isclose(result["test_accuracy_std"], math.sqrt(0.02))
 
 
 def test_gradient_scale_uses_mean_per_example_norm_over_parameter_count(monkeypatch):
@@ -90,7 +104,45 @@ def test_grid_search_records_every_point_and_selects_with_fake_runner(tmp_path):
         noise_rows = list(csv.DictReader(stream))
     assert len(noise_rows) == 8
     assert {row["method"] for row in noise_rows} == {"sgd", "rsgd"}
+    with (root / "tuning_aggregated.csv").open() as stream:
+        tuning_groups = list(csv.DictReader(stream))
+    with (root / "noise_sweep_aggregated.csv").open() as stream:
+        noise_groups = list(csv.DictReader(stream))
+    assert len(tuning_groups) == 6 and len(noise_groups) == 4
+    assert all(group["n_runs"] == "2" for group in noise_groups)
+    assert all("test_accuracy_mean" in group for group in noise_groups)
     assert json.loads((root / "selection.json").read_text()) == summary
+
+
+def test_failed_tuning_seed_is_recorded_and_point_is_excluded(tmp_path):
+    def flaky_runner(optimizer_cls, name="optimizer", **settings):
+        if settings["rho"] == 0.5 and settings["seed"] == 1:
+            raise RuntimeError("boom")
+        return {
+            "validation_loss": settings["learning_rate"] + settings["rho"],
+            "test_accuracy": 0.5,
+        }
+
+    summary = run_grid_search(
+        flaky_runner, lambda seed: nn.Linear(2, 1), sample_logreg,
+        experiment="flaky", output_dir=tmp_path,
+        lr_grid=(0.1,), rho_grid=(0.0, 0.5), seeds=(1, 2),
+        noise_multipliers=(0.0, 1.0), warmup_updates=2,
+        run_settings={"train_size": 8, "validation_size": 4, "test_size": 4,
+                      "batch_size": 4, "updates": 3},
+    )
+    root = tmp_path / "flaky" / "grid_search"
+    assert summary["rsgd"]["rho"] == 0.0
+    assert summary["variability"]["failed_runs"] == 1
+    with (root / "failed_runs.csv").open() as stream:
+        failures = list(csv.DictReader(stream))
+    assert len(failures) == 1
+    assert failures[0]["phase"] == "tuning"
+    assert failures[0]["method"] == "rsgd"
+    assert failures[0]["seed"] == "1"
+    assert failures[0]["error_type"] == "RuntimeError"
+    with (root / "rsgd_lr_rho_grid.csv").open() as stream:
+        assert len(list(csv.DictReader(stream))) == 2
 
 
 def test_grid_search_saves_full_artifacts_for_noise_sweep(tmp_path):

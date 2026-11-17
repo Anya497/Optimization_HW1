@@ -28,3 +28,15 @@ Reuse: `experiments/common.py` (`setup_seed`, `save_results`), `src/data/common.
 (`make_loaders`), `src/models.py` (`SemicircleNet`, `LogReg`), `src/train.py`
 (`train`, `evaluate`), `src/optimizer.py` (`RobustSGD`),
 `src/grad_noise.py` (`per_example_gradients`).
+
+## Reporting data for tasks 3–5
+
+- **T2** — Add (2) per-seed variability aggregation and failed-run tracking,
+  (3) a dataset-vs-training randomness study with CLI flags, and (4) an explicit
+  search budget in `selection.json`. Depends on: T1. Status: `[open]`.
+
+Overlap: T2 and T1 both touch `experiments/grid_search.py`,
+`experiments/run_grid_search.py`, `tests/test_grid_search.py`, and `README.md`;
+T1 is already integrated, so no branch conflict is expected. Item 1 (semicircle
+generator mismatch) and item 6 (uncertainty-ridge formula) were explicitly left
+out by the user.
