@@ -33,7 +33,8 @@ Reuse: `experiments/common.py` (`setup_seed`, `save_results`), `src/data/common.
 
 - **T2** — Add (2) per-seed variability aggregation and failed-run tracking,
   (3) a dataset-vs-training randomness study with CLI flags, and (4) an explicit
-  search budget in `selection.json`. Depends on: T1. Status: `[open]`.
+  search budget in `selection.json`. Depends on: T1. Status: `[in progress]`
+  (feature branch `T2-report-data`, review fixes pending).
 
 Overlap: T2 and T1 both touch `experiments/grid_search.py`,
 `experiments/run_grid_search.py`, `tests/test_grid_search.py`, and `README.md`;

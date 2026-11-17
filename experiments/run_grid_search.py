@@ -70,7 +70,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> dict:
     """Run the requested simulation's grid search and return its summary."""
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.data_sensitivity_seed is not None and args.data_seeds is None:
+        parser.error("--data-sensitivity-seed requires --data-seeds")
     runner, model_factory, sampler = EXPERIMENTS[args.experiment]
     run_settings = {
         key: value for key, value in vars(args).items()
