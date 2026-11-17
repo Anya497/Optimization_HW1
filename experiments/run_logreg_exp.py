@@ -1,15 +1,16 @@
-from src.data.common import make_loaders
+"""Simulation 1 entry point using RobustSGD."""
+
 from src.data.log_regression import sample_points
-from torch.nn import Linear
-from experiments.common import setup_seed
+from src.models import LogReg
+
+from .common import run_experiment as _run_experiment
 
 
-def main():
-    seed = 1024
-    setup_seed(seed)
-    n_points = 1000
-    in_features = 2
-    out_features = 1
-    loaders = make_loaders(sample_points, train_size=n_points, data_seed=seed, seed=seed)
-    model = Linear(in_features, out_features, bias=True)
-    return model, loaders
+def run_experiment(optimizer_cls, name="optimizer", **settings) -> dict:
+    """Run the Gaussian/logistic-regression simulation with the shared pipeline.
+
+    Accepts the same keyword settings as :func:`experiments.common.run_experiment`
+    and defaults the output directory to ``results/logreg``.
+    """
+    settings.setdefault("output_dir", "results/logreg")
+    return _run_experiment(LogReg, sample_points, optimizer_cls, name, **settings)

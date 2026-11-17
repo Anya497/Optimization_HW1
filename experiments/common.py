@@ -2,9 +2,56 @@ import csv
 import json
 import platform
 from pathlib import Path
+from typing import Callable
 
 import torch
 import random
+from torch import nn
+
+from src.data.common import make_loaders
+from src.train import train
+
+
+def run_experiment(
+    model_factory: Callable[..., nn.Module],
+    sampler: Callable,
+    optimizer_cls: type[torch.optim.Optimizer],
+    name: str = "optimizer",
+    *,
+    train_size: int = 1000,
+    validation_size: int = 400,
+    test_size: int = 400,
+    batch_size: int = 32,
+    updates: int = 1000,
+    data_seed: int = 42,
+    seed: int = 0,
+    learning_rate: float = 0.1,
+    rho: float = 0.0,
+    decay_scale: float = 50.0,
+    gradient_noise: float = 0.0,
+    eval_every: int = 50,
+    output_dir: str = "results",
+) -> dict:
+    """Create fresh data/model for a paired run, train, and save its outputs."""
+    model = model_factory(seed=seed)
+    optimizer = optimizer_cls(model.parameters(), lr=learning_rate, rho=rho)
+    loaders = make_loaders(
+        sampler, train_size, validation_size, test_size, batch_size, updates,
+        data_seed, seed,
+    )
+    history, metrics = train(
+        model, loaders, optimizer, decay_scale=decay_scale,
+        gradient_noise=gradient_noise, seed=seed, eval_every=eval_every,
+    )
+    settings = {
+        "train_size": train_size, "validation_size": validation_size,
+        "test_size": test_size, "batch_size": batch_size, "updates": updates,
+        "data_seed": data_seed, "seed": seed, "learning_rate": learning_rate,
+        "decay_scale": decay_scale, "gradient_noise": gradient_noise,
+        "eval_every": eval_every, "rho": rho,
+    }
+    save_results(model, loaders, output_dir, name, history, metrics, settings)
+    return metrics
 
 
 def setup_seed(seed: int):
