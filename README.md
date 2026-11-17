@@ -185,7 +185,11 @@ Outputs are written under `results/<experiment>/grid_search/`:
   uncertainty, while `noise_sweep_aggregated.csv` isolates training randomness
   when a single `--data-seed` is used.
 - `selection.json`: chosen parameters, mean validation losses, per-seed scales,
-  noise grids, a `variability` block, and a `dataset_sensitivity` block.
+  noise grids, a `variability` block, a `dataset_sensitivity` block, and a
+  `search_budget` block with run/update/gradient-evaluation counts for tuning,
+  noise sweep, dataset study, and the two per-seed warmups. Warmup updates are
+  included in the update totals but not in `total_runs`; failed runs are reported
+  separately and excluded from the completed-run counts.
 - `noise_sweep/`: one folder of saved run artifacts per method and selected
   parameter pair. Tuning runs use `save=False`, so no `tuning/` folder is written.
 

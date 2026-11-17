@@ -12,6 +12,7 @@ from experiments.grid_search import (
     aggregate_metrics,
     estimate_gradient_scale,
     run_grid_search,
+    search_budget,
     select_best_parameters,
 )
 from experiments.run_logreg_exp import run_experiment as run_logreg
@@ -47,6 +48,28 @@ def test_aggregate_metrics_reports_sample_mean_and_std():
     assert math.isclose(result["validation_loss_std"], math.sqrt(2))
     assert math.isclose(result["test_accuracy_mean"], 0.6)
     assert math.isclose(result["test_accuracy_std"], math.sqrt(0.02))
+
+
+def test_search_budget_counts_runs_updates_and_gradient_evaluations():
+    budget = search_budget(
+        tuning_rows=[{"gradient_evaluations": 12}] * 3,
+        noise_rows=[{"gradient_evaluations": 20}] * 2,
+        sensitivity_rows=[{"gradient_evaluations": 20}],
+        settings={"updates": 5, "batch_size": 4},
+        seeds=(1, 2), warmup_updates=3, failed_runs=1,
+    )
+    assert budget["tuning"] == {
+        "runs": 3, "updates": 15, "gradient_evaluations": 36,
+    }
+    assert budget["warmup"] == {
+        "runs": 0, "updates": 12, "gradient_evaluations": 48,
+    }
+    assert budget["noise_sweep"]["runs"] == 2
+    assert budget["dataset_sensitivity"]["gradient_evaluations"] == 20
+    assert budget["failed_runs"] == 1
+    assert budget["total_runs"] == 6
+    assert budget["total_updates"] == 15 + 10 + 5 + 12
+    assert budget["total_gradient_evaluations"] == 36 + 40 + 20 + 48
 
 
 def test_gradient_scale_uses_mean_per_example_norm_over_parameter_count(monkeypatch):
@@ -89,6 +112,16 @@ def test_grid_search_records_every_point_and_selects_with_fake_runner(tmp_path):
     assert summary["rsgd"]["learning_rate"] == 0.1
     assert summary["rsgd"]["rho"] == 0.0
     assert len(calls) == 20
+    assert summary["search_budget"]["tuning"]["runs"] == 12
+    assert summary["search_budget"]["noise_sweep"]["runs"] == 8
+    assert summary["search_budget"]["dataset_sensitivity"]["runs"] == 0
+    assert summary["search_budget"]["warmup"] == {
+        "runs": 0, "updates": 8, "gradient_evaluations": 32,
+    }
+    assert summary["search_budget"]["total_runs"] == 20
+    assert summary["search_budget"]["total_updates"] == 68
+    assert summary["search_budget"]["total_gradient_evaluations"] == 32
+    assert summary["search_budget"]["failed_runs"] == 0
     sgd_calls = [settings for name, settings in calls if name.startswith("tuning/sgd")]
     rsgd_calls = [settings for name, settings in calls if name.startswith("tuning/rsgd")]
     assert len(sgd_calls) == 4 and len(rsgd_calls) == 8
@@ -143,6 +176,7 @@ def test_dataset_sensitivity_holds_training_seed_fixed(tmp_path):
         if name.startswith("dataset_sensitivity/")
     ]
     assert len(sensitivity_calls) == 8
+    assert summary["search_budget"]["dataset_sensitivity"]["runs"] == 8
     assert {settings["seed"] for settings in sensitivity_calls} == {1}
     assert {settings["data_seed"] for settings in sensitivity_calls} == {1, 2}
     tuning_calls = [
@@ -177,6 +211,8 @@ def test_failed_tuning_seed_is_recorded_and_point_is_excluded(tmp_path):
     root = tmp_path / "flaky" / "grid_search"
     assert summary["rsgd"]["rho"] == 0.0
     assert summary["variability"]["failed_runs"] == 1
+    assert summary["search_budget"]["tuning"]["runs"] == 4
+    assert summary["search_budget"]["failed_runs"] == 1
     with (root / "failed_runs.csv").open() as stream:
         failures = list(csv.DictReader(stream))
     assert len(failures) == 1
