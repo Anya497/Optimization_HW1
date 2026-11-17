@@ -39,8 +39,10 @@ def test_selection_uses_mean_validation_loss_and_breaks_ties_on_grid_order():
 
 def test_aggregate_metrics_reports_sample_mean_and_std():
     rows = [
-        {"method": "sgd", "validation_loss": 1.0, "test_accuracy": 0.5},
-        {"method": "sgd", "validation_loss": 3.0, "test_accuracy": 0.7},
+        {"method": "sgd", "validation_loss": 1.0, "test_accuracy": 0.5,
+         "custom_metric": 10.0},
+        {"method": "sgd", "validation_loss": 3.0, "test_accuracy": 0.7,
+         "custom_metric": 20.0},
     ]
     result = aggregate_metrics(rows, ("method",))[0]
     assert result["method"] == "sgd" and result["n_runs"] == 2
@@ -48,6 +50,7 @@ def test_aggregate_metrics_reports_sample_mean_and_std():
     assert math.isclose(result["validation_loss_std"], math.sqrt(2))
     assert math.isclose(result["test_accuracy_mean"], 0.6)
     assert math.isclose(result["test_accuracy_std"], math.sqrt(0.02))
+    assert math.isclose(result["custom_metric_mean"], 15.0)
 
 
 def test_search_budget_counts_runs_updates_and_gradient_evaluations():
@@ -222,6 +225,40 @@ def test_failed_tuning_seed_is_recorded_and_point_is_excluded(tmp_path):
     assert failures[0]["error_type"] == "RuntimeError"
     with (root / "rsgd_lr_rho_grid.csv").open() as stream:
         assert len(list(csv.DictReader(stream))) == 2
+    assert failures[0]["data_seed"] == "1"
+
+
+def test_failed_noise_run_is_recorded_and_sweep_continues(tmp_path):
+    def failing_noise_runner(optimizer_cls, name="optimizer", **settings):
+        if (name.startswith("noise_sweep/sgd") and settings["seed"] == 2
+                and settings["gradient_noise"] == 0.0):
+            raise RuntimeError("noise boom")
+        return {
+            "validation_loss": settings["learning_rate"] + settings["rho"],
+            "test_accuracy": 0.5,
+        }
+
+    summary = run_grid_search(
+        failing_noise_runner, lambda seed: nn.Linear(2, 1), sample_logreg,
+        experiment="noise_failure", output_dir=tmp_path,
+        lr_grid=(0.1,), rho_grid=(0.0,), seeds=(1, 2),
+        noise_multipliers=(0.0, 1.0), warmup_updates=2,
+        run_settings={"train_size": 8, "validation_size": 4, "test_size": 4,
+                      "batch_size": 4, "updates": 3},
+    )
+    root = tmp_path / "noise_failure" / "grid_search"
+    assert summary["variability"]["failed_runs"] == 1
+    assert summary["search_budget"]["noise_sweep"]["runs"] == 7
+    with (root / "failed_runs.csv").open() as stream:
+        failures = list(csv.DictReader(stream))
+    assert len(failures) == 1
+    assert failures[0]["phase"] == "noise"
+    assert failures[0]["method"] == "sgd"
+    assert failures[0]["seed"] == "2"
+    assert failures[0]["gradient_noise"] == "0.0"
+    assert failures[0]["data_seed"] == "2"
+    with (root / "noise_sweep_summary.csv").open() as stream:
+        assert len(list(csv.DictReader(stream))) == 7
 
 
 def test_grid_search_saves_full_artifacts_for_noise_sweep(tmp_path):
@@ -294,4 +331,10 @@ def test_cli_accepts_dataset_sensitivity_flags(tmp_path):
 def test_cli_rejects_both_data_seed_flags():
     with pytest.raises(SystemExit) as error:
         main(["--experiment", "logreg", "--data-seed", "1", "--data-seeds", "1,2"])
+    assert error.value.code == 2
+
+
+def test_cli_requires_data_seeds_for_sensitivity_seed():
+    with pytest.raises(SystemExit) as error:
+        main(["--experiment", "logreg", "--data-sensitivity-seed", "2"])
     assert error.value.code == 2

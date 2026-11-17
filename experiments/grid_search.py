@@ -26,11 +26,10 @@ RHOS = (0.0, 0.1, 0.3, 1.0, 3.0)
 SEEDS = (1, 2, 3, 4, 5)
 NOISE_MULTIPLIERS = (0.0, 0.1, 0.3, 1.0, 2.5)
 WARMUP_UPDATES = 50
-METRIC_KEYS = (
-    "train_loss", "validation_loss", "validation_accuracy", "test_loss",
-    "test_accuracy", "runtime_seconds", "update_seconds",
-    "gradient_evaluations", "zero_steps", "zero_step_frequency",
-)
+IDENTITY_KEYS = frozenset({
+    "method", "learning_rate", "rho", "seed", "data_seed", "gradient_noise",
+    "n_runs",
+})
 FAILURE_FIELDS = (
     "phase", "method", "learning_rate", "rho", "seed", "gradient_noise",
     "data_seed", "error_type", "message",
@@ -69,6 +68,7 @@ def sweep_grid(
     method: str = "tuning",
     failures: list[dict] | None = None,
     data_seed: int | None = None,
+    resolve_data_seed: Callable[[int], int] | None = None,
 ) -> dict[tuple[float, float], list[dict]]:
     """Run every (learning rate, rho) point for every seed.
 
@@ -90,7 +90,12 @@ def sweep_grid(
                         record_failure(
                             failures, phase="tuning", method=method,
                             learning_rate=learning_rate, rho=rho, seed=seed,
-                            gradient_noise=None, data_seed=data_seed, error=error,
+                            gradient_noise=None,
+                            data_seed=(
+                                resolve_data_seed(seed)
+                                if resolve_data_seed is not None else data_seed
+                            ),
+                            error=error,
                         )
                     continue
                 rows.append({
@@ -112,16 +117,25 @@ def mean_validation_loss(rows: Sequence[dict]) -> float:
 def aggregate_metrics(
     rows: Sequence[dict], group_keys: Sequence[str],
 ) -> list[dict]:
-    """Compute sample mean/std of numeric metrics over runs in each group."""
+    """Compute sample mean/std of numeric metrics over runs in each group.
+
+    Numeric columns other than run identifiers are treated as metrics, so new
+    metrics from the runner are aggregated without changing this function.
+    """
     groups: dict[tuple, list[dict]] = {}
     for row in rows:
         key = tuple(row[column] for column in group_keys)
         groups.setdefault(key, []).append(row)
+    metric_keys = sorted({
+        key for row in rows for key, value in row.items()
+        if key not in IDENTITY_KEYS and isinstance(value, (int, float))
+        and not isinstance(value, bool)
+    })
     aggregated = []
     for key, group in groups.items():
         result = dict(zip(group_keys, key))
         result["n_runs"] = len(group)
-        for metric in METRIC_KEYS:
+        for metric in metric_keys:
             values = [float(row[metric]) for row in group if metric in row]
             if not values:
                 continue
@@ -307,11 +321,13 @@ def run_grid_search(
         lambda lr, rho, seed: tune(lr, rho, seed, f"sgd_lr_{lr}"),
         lr_grid, (0.0,), seeds,
         method="sgd", failures=failures, data_seed=data_seed,
+        resolve_data_seed=seed_data,
     )
     rsgd_grid = sweep_grid(
         lambda lr, rho, seed: tune(lr, rho, seed, f"rsgd_lr_{lr}_rho_{rho}"),
         lr_grid, rho_grid, seeds,
         method="rsgd", failures=failures, data_seed=data_seed,
+        resolve_data_seed=seed_data,
     )
     sgd_lr = select_best_parameters(sgd_grid)[0]
     rsgd_lr, rsgd_rho = select_best_parameters(rsgd_grid)
