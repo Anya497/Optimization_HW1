@@ -2,10 +2,12 @@ import csv
 import json
 import math
 
+import pytest
 import torch
 from torch import nn
 
 from experiments import grid_search
+from experiments.run_grid_search import main
 from experiments.grid_search import (
     estimate_gradient_scale,
     run_grid_search,
@@ -102,3 +104,27 @@ def test_grid_search_saves_full_artifacts_for_noise_sweep(tmp_path):
     assert summary["noise_grid"]["sgd"][0] == 0.0
     assert len(list((root / "noise_sweep").rglob("metrics.json"))) == 4
     assert len(list((root / "noise_sweep").rglob("plots.png"))) == 4
+
+
+@pytest.mark.parametrize("experiment", ["logreg", "semicircle"])
+def test_cli_runs_both_experiments(experiment, tmp_path, capsys):
+    summary = main([
+        "--experiment", experiment,
+        "--output-dir", str(tmp_path),
+        "--seeds", "1",
+        "--lr-grid", "0.1",
+        "--rho-grid", "0",
+        "--noise-multipliers", "0,1",
+        "--warmup-updates", "2",
+        "--train-size", "8",
+        "--validation-size", "4",
+        "--test-size", "4",
+        "--batch-size", "4",
+        "--updates", "3",
+        "--eval-every", "2",
+    ])
+    assert summary["sgd"]["learning_rate"] == 0.1
+    assert summary["rsgd"]["rho"] == 0.0
+    assert summary["grids"]["noise_multipliers"] == [0.0, 1.0]
+    assert (tmp_path / experiment / "grid_search" / "selection.json").is_file()
+    assert experiment in capsys.readouterr().out
