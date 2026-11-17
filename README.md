@@ -172,8 +172,15 @@ Outputs are written under `results/<experiment>/grid_search/`:
 
 - `sgd_lr_grid.csv`, `rsgd_lr_rho_grid.csv`: every tuning point for every seed.
 - `noise_sweep_summary.csv`: every method/seed/noise run and its metrics.
+- `tuning_aggregated.csv`, `noise_sweep_aggregated.csv`: per-group sample mean
+  and standard deviation of every metric across successful evaluation seeds
+  (`n_runs` counts those seeds; std uses the n−1 denominator). The error bars
+  therefore describe seed-to-seed variability, not measurement error.
+- `failed_runs.csv`: context and error for every failed run. A tuning point with
+  any failed seed is dropped from selection so all remaining points use the
+  same number of seeds; failed noise runs are skipped but recorded.
 - `selection.json`: chosen parameters, mean validation losses, per-seed scales,
-  and the resulting noise grids.
+  noise grids, and a `variability` block referencing the aggregated files.
 - `noise_sweep/`: one folder of saved run artifacts per method and selected
   parameter pair. Tuning runs use `save=False`, so no `tuning/` folder is written.
 
