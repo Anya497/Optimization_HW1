@@ -52,8 +52,8 @@ $$
 Equivalently, independence gives the variance of the mean gradient:
 
 $$
-\operatorname{Var}(g_j)
-= \frac{1}{b^2}\sum_{i=1}^{b}\operatorname{Var}(v_{i,j})
+\mathrm{Var}(g_j)
+= \frac{1}{b^2}\sum_{i=1}^{b}\mathrm{Var}(v_{i,j})
 = \frac{C_{jj}}{b}.
 $$
 
