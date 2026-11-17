@@ -71,6 +71,11 @@ class RobustSGD(Optimizer):
                             continue
 
                     per_sample_grads = noisy_grads[p].detach() # (B, *p.shape)
+                    if per_sample_grads.shape[0] < 2:
+                        raise ValueError(
+                            "RobustSGD needs at least two gradient observations "
+                            "to estimate uncertainty"
+                        )
 
                     g = per_sample_grads.mean(dim=0)
                     centered = per_sample_grads - g.unsqueeze(0)

@@ -148,6 +148,16 @@ class TrainingTests(unittest.TestCase):
         self.assertLess(history[-1]["train_loss"], history[0]["train_loss"])
         self.assertEqual(metrics["gradient_evaluations"], 20 * 16)
 
+    def test_train_reports_final_validation_metrics(self):
+        loaders = make_loaders(sample_logreg, train_size=20, validation_size=10,
+                               test_size=10, batch_size=4, updates=2)
+        model = LinearLogit()
+        optimizer = RobustSGD(model.parameters(), lr=0.1)
+        _, metrics = train(model, loaders, optimizer)
+        validation = evaluate(model, loaders["validation"])
+        self.assertAlmostEqual(metrics["validation_loss"], validation["loss"])
+        self.assertAlmostEqual(metrics["validation_accuracy"], validation["accuracy"])
+
     def test_evaluation_with_known_predictions_and_uneven_batches(self):
         points = torch.tensor([[2.0, 0.0], [-2.0, 0.0], [0.0, 0.0], [-1.0, 0.0]])
         labels = torch.tensor([1.0, 0.0, 0.0, 0.0])
