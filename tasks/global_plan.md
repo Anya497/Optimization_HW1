@@ -1,7 +1,8 @@
 # Global plan
 
-Integration branch: `main` (`git config --get agent.integrationBranch` is unset,
-so the release branch is used directly).
+Integration branch: `anya` by explicit user request on 2026-11-17
+("нужно, чтобы все было в ветке Anya"). `git config --get agent.integrationBranch`
+is unset, so the default would otherwise be `main`.
 
 ## Grid search for SGD/RSGD hyperparameters
 
