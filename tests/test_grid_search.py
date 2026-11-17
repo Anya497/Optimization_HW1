@@ -39,10 +39,18 @@ def test_selection_uses_mean_validation_loss_and_breaks_ties_on_grid_order():
 
 def test_aggregate_metrics_reports_sample_mean_and_std():
     rows = [
-        {"method": "sgd", "validation_loss": 1.0, "test_accuracy": 0.5,
-         "custom_metric": 10.0},
-        {"method": "sgd", "validation_loss": 3.0, "test_accuracy": 0.7,
-         "custom_metric": 20.0},
+        {
+            "method": "sgd",
+            "validation_loss": 1.0,
+            "test_accuracy": 0.5,
+            "custom_metric": 10.0,
+        },
+        {
+            "method": "sgd",
+            "validation_loss": 3.0,
+            "test_accuracy": 0.7,
+            "custom_metric": 20.0,
+        },
     ]
     result = aggregate_metrics(rows, ("method",))[0]
     assert result["method"] == "sgd" and result["n_runs"] == 2
@@ -59,31 +67,44 @@ def test_search_budget_counts_runs_updates_and_gradient_evaluations():
         noise_rows=[{"gradient_evaluations": 20}] * 2,
         sensitivity_rows=[{"gradient_evaluations": 20}],
         settings={"updates": 5, "batch_size": 4},
-        seeds=(1, 2), warmup_updates=3, failed_runs=1,
+        seeds=(1, 2),
+        warmup_updates=3,
+        failed_runs=1,
     )
     assert budget["tuning"] == {
-        "runs": 3, "updates": 15, "gradient_evaluations": 36,
+        "runs": 3,
+        "updates": 15,
+        "gradient_evaluations": 36,
     }
+    # One gradient-scale estimation per seed, at the selected (lr*, rho*), sigma=0.
     assert budget["warmup"] == {
-        "runs": 0, "updates": 12, "gradient_evaluations": 48,
+        "runs": 0,
+        "updates": 6,
+        "gradient_evaluations": 24,
     }
     assert budget["noise_sweep"]["runs"] == 2
     assert budget["dataset_sensitivity"]["gradient_evaluations"] == 20
     assert budget["failed_runs"] == 1
     assert budget["total_runs"] == 6
-    assert budget["total_updates"] == 15 + 10 + 5 + 12
-    assert budget["total_gradient_evaluations"] == 36 + 40 + 20 + 48
+    assert budget["total_updates"] == 15 + 10 + 5 + 6
+    assert budget["total_gradient_evaluations"] == 36 + 40 + 20 + 24
 
 
 def test_gradient_scale_uses_mean_per_example_norm_over_parameter_count(monkeypatch):
     model = nn.Linear(2, 1)
     loaders = make_loaders(
-        sample_logreg, train_size=8, validation_size=4, test_size=4,
-        batch_size=4, updates=2, seed=1,
+        sample_logreg,
+        train_size=8,
+        validation_size=4,
+        test_size=4,
+        batch_size=4,
+        updates=2,
+        seed=1,
     )
     optimizer = RobustSGD(model.parameters(), lr=0.01, rho=0)
     monkeypatch.setattr(
-        grid_search, "per_example_gradients",
+        grid_search,
+        "per_example_gradients",
         lambda model, x, y: {
             parameter: torch.ones((len(x), *parameter.shape))
             for parameter in model.parameters()
@@ -104,33 +125,47 @@ def test_grid_search_records_every_point_and_selects_with_fake_runner(tmp_path):
         }
 
     summary = run_grid_search(
-        fake_runner, lambda seed: nn.Linear(2, 1), sample_logreg,
-        experiment="fake", output_dir=tmp_path,
-        lr_grid=(0.1, 0.2), rho_grid=(0.0, 0.5), seeds=(1, 2),
-        noise_multipliers=(0.0, 1.0), warmup_updates=2,
-        run_settings={"train_size": 8, "validation_size": 4, "test_size": 4,
-                      "batch_size": 4, "updates": 3},
+        fake_runner,
+        lambda seed: nn.Linear(2, 1),
+        sample_logreg,
+        experiment="fake",
+        output_dir=tmp_path,
+        lr_grid=(0.1, 0.2),
+        rho_grid=(0.0, 0.5),
+        seeds=(1, 2),
+        noise_multipliers=(0.0, 1.0),
+        warmup_updates=2,
+        run_settings={
+            "train_size": 8,
+            "validation_size": 4,
+            "test_size": 4,
+            "batch_size": 4,
+            "updates": 3,
+        },
     )
     assert summary["sgd"]["learning_rate"] == 0.1
     assert summary["rsgd"]["learning_rate"] == 0.1
     assert summary["rsgd"]["rho"] == 0.0
-    assert len(calls) == 20
+    assert len(calls) == 24
     assert summary["search_budget"]["tuning"]["runs"] == 12
-    assert summary["search_budget"]["noise_sweep"]["runs"] == 8
+    assert summary["search_budget"]["noise_sweep"]["runs"] == 12
     assert summary["search_budget"]["dataset_sensitivity"]["runs"] == 0
     assert summary["search_budget"]["warmup"] == {
-        "runs": 0, "updates": 8, "gradient_evaluations": 32,
+        "runs": 0,
+        "updates": 4,
+        "gradient_evaluations": 16,
     }
-    assert summary["search_budget"]["total_runs"] == 20
-    assert summary["search_budget"]["total_updates"] == 68
-    assert summary["search_budget"]["total_gradient_evaluations"] == 32
+    assert summary["search_budget"]["total_runs"] == 24
+    assert summary["search_budget"]["total_updates"] == 76
+    assert summary["search_budget"]["total_gradient_evaluations"] == 16
     assert summary["search_budget"]["failed_runs"] == 0
-    sgd_calls = [settings for name, settings in calls if name.startswith("tuning/sgd")]
-    rsgd_calls = [settings for name, settings in calls if name.startswith("tuning/rsgd")]
+
+    sgd_calls = [s for n, s in calls if n.startswith("tuning/sgd")]
+    rsgd_calls = [s for n, s in calls if n.startswith("tuning/rsgd")]
     assert len(sgd_calls) == 4 and len(rsgd_calls) == 8
-    assert {settings["rho"] for settings in sgd_calls} == {0.0}
-    assert 0.0 in {settings["rho"] for settings in rsgd_calls}
-    assert sum(settings.get("save") is False for _, settings in calls) == 12
+    assert {s["rho"] for s in sgd_calls} == {0.0}
+    assert 0.0 in {s["rho"] for s in rsgd_calls}
+    assert sum(s.get("save") is False for _, s in calls) == 12
     root = tmp_path / "fake" / "grid_search"
     with (root / "sgd_lr_grid.csv").open() as stream:
         assert len(list(csv.DictReader(stream))) == 4
@@ -138,15 +173,16 @@ def test_grid_search_records_every_point_and_selects_with_fake_runner(tmp_path):
         assert len(list(csv.DictReader(stream))) == 8
     with (root / "noise_sweep_summary.csv").open() as stream:
         noise_rows = list(csv.DictReader(stream))
-    assert len(noise_rows) == 8
-    assert {row["method"] for row in noise_rows} == {"sgd", "rsgd"}
-    with (root / "tuning_aggregated.csv").open() as stream:
-        tuning_groups = list(csv.DictReader(stream))
+    assert len(noise_rows) == 12
+    assert {r["method"] for r in noise_rows} == {"sgd", "rsgd"}
+    assert {r["rho"] for r in noise_rows if r["method"] == "sgd"} == {"0.0"}
+    assert {r["rho"] for r in noise_rows if r["method"] == "rsgd"} == {"0.0", "0.5"}
+
     with (root / "noise_sweep_aggregated.csv").open() as stream:
         noise_groups = list(csv.DictReader(stream))
-    assert len(tuning_groups) == 6 and len(noise_groups) == 4
-    assert all(group["n_runs"] == "2" for group in noise_groups)
-    assert all("test_accuracy_mean" in group for group in noise_groups)
+    assert len(noise_groups) == 6
+    assert all(g["n_runs"] == "2" for g in noise_groups)
+    assert all("test_accuracy_mean" in g for g in noise_groups)
     assert json.loads((root / "selection.json").read_text()) == summary
 
 
@@ -161,42 +197,55 @@ def test_dataset_sensitivity_holds_training_seed_fixed(tmp_path):
         }
 
     summary = run_grid_search(
-        fake_runner, lambda seed: nn.Linear(2, 1), sample_logreg,
-        experiment="sensitivity", output_dir=tmp_path,
-        lr_grid=(0.1,), rho_grid=(0.0, 0.5), seeds=(1, 2),
-        noise_multipliers=(0.0, 1.0), warmup_updates=2,
+        fake_runner,
+        lambda seed: nn.Linear(2, 1),
+        sample_logreg,
+        experiment="sensitivity",
+        output_dir=tmp_path,
+        lr_grid=(0.1,),
+        rho_grid=(0.0, 0.5),
+        seeds=(1, 2),
+        noise_multipliers=(0.0, 1.0),
+        warmup_updates=2,
         data_seeds=(1, 2),
-        run_settings={"train_size": 8, "validation_size": 4, "test_size": 4,
-                      "batch_size": 4, "updates": 3},
+        run_settings={
+            "train_size": 8,
+            "validation_size": 4,
+            "test_size": 4,
+            "batch_size": 4,
+            "updates": 3,
+        },
     )
     root = tmp_path / "sensitivity" / "grid_search"
     assert summary["data_seed"] == 1
     assert summary["dataset_sensitivity"]["enabled"] is True
     assert summary["dataset_sensitivity"]["training_seed"] == 1
     assert summary["dataset_sensitivity"]["data_seeds"] == [1, 2]
-    sensitivity_calls = [
-        settings for name, settings in calls
-        if name.startswith("dataset_sensitivity/")
-    ]
-    assert len(sensitivity_calls) == 8
-    assert summary["search_budget"]["dataset_sensitivity"]["runs"] == 8
-    assert {settings["seed"] for settings in sensitivity_calls} == {1}
-    assert {settings["data_seed"] for settings in sensitivity_calls} == {1, 2}
-    tuning_calls = [
-        settings for name, settings in calls if name.startswith("tuning/")
-    ]
-    assert {settings["data_seed"] for settings in tuning_calls} == {1}
+
+    sensitivity_calls = [s for n, s in calls if n.startswith("dataset_sensitivity/")]
+    assert len(sensitivity_calls) == 4
+    assert summary["search_budget"]["dataset_sensitivity"]["runs"] == 4
+    assert {s["seed"] for s in sensitivity_calls} == {1}
+    assert {s["data_seed"] for s in sensitivity_calls} == {1, 2}
+
+    tuning_calls = [s for n, s in calls if n.startswith("tuning/")]
+    assert {s["data_seed"] for s in tuning_calls} == {1}
+
     with (root / "dataset_sensitivity.csv").open() as stream:
-        assert len(list(csv.DictReader(stream))) == 8
+        assert len(list(csv.DictReader(stream))) == 4
     with (root / "dataset_sensitivity_aggregated.csv").open() as stream:
         groups = list(csv.DictReader(stream))
-    assert len(groups) == 4
-    assert all(group["n_runs"] == "2" for group in groups)
+    assert len(groups) == 2
+    assert all(g["n_runs"] == "2" for g in groups)
 
 
 def test_failed_tuning_seed_is_recorded_and_point_is_excluded(tmp_path):
     def flaky_runner(optimizer_cls, name="optimizer", **settings):
-        if settings["rho"] == 0.5 and settings["seed"] == 1:
+        if (
+            name.startswith("tuning/")
+            and settings["rho"] == 0.5
+            and settings["seed"] == 1
+        ):
             raise RuntimeError("boom")
         return {
             "validation_loss": settings["learning_rate"] + settings["rho"],
@@ -204,12 +253,23 @@ def test_failed_tuning_seed_is_recorded_and_point_is_excluded(tmp_path):
         }
 
     summary = run_grid_search(
-        flaky_runner, lambda seed: nn.Linear(2, 1), sample_logreg,
-        experiment="flaky", output_dir=tmp_path,
-        lr_grid=(0.1,), rho_grid=(0.0, 0.5), seeds=(1, 2),
-        noise_multipliers=(0.0, 1.0), warmup_updates=2,
-        run_settings={"train_size": 8, "validation_size": 4, "test_size": 4,
-                      "batch_size": 4, "updates": 3},
+        flaky_runner,
+        lambda seed: nn.Linear(2, 1),
+        sample_logreg,
+        experiment="flaky",
+        output_dir=tmp_path,
+        lr_grid=(0.1,),
+        rho_grid=(0.0, 0.5),
+        seeds=(1, 2),
+        noise_multipliers=(0.0, 1.0),
+        warmup_updates=2,
+        run_settings={
+            "train_size": 8,
+            "validation_size": 4,
+            "test_size": 4,
+            "batch_size": 4,
+            "updates": 3,
+        },
     )
     root = tmp_path / "flaky" / "grid_search"
     assert summary["rsgd"]["rho"] == 0.0
@@ -230,8 +290,11 @@ def test_failed_tuning_seed_is_recorded_and_point_is_excluded(tmp_path):
 
 def test_failed_noise_run_is_recorded_and_sweep_continues(tmp_path):
     def failing_noise_runner(optimizer_cls, name="optimizer", **settings):
-        if (name.startswith("noise_sweep/sgd") and settings["seed"] == 2
-                and settings["gradient_noise"] == 0.0):
+        if (
+            name.startswith("noise_sweep/sgd")
+            and settings["seed"] == 2
+            and settings["gradient_noise"] == 0.0
+        ):
             raise RuntimeError("noise boom")
         return {
             "validation_loss": settings["learning_rate"] + settings["rho"],
@@ -239,12 +302,23 @@ def test_failed_noise_run_is_recorded_and_sweep_continues(tmp_path):
         }
 
     summary = run_grid_search(
-        failing_noise_runner, lambda seed: nn.Linear(2, 1), sample_logreg,
-        experiment="noise_failure", output_dir=tmp_path,
-        lr_grid=(0.1,), rho_grid=(0.0,), seeds=(1, 2),
-        noise_multipliers=(0.0, 1.0), warmup_updates=2,
-        run_settings={"train_size": 8, "validation_size": 4, "test_size": 4,
-                      "batch_size": 4, "updates": 3},
+        failing_noise_runner,
+        lambda seed: nn.Linear(2, 1),
+        sample_logreg,
+        experiment="noise_failure",
+        output_dir=tmp_path,
+        lr_grid=(0.1,),
+        rho_grid=(0.0,),
+        seeds=(1, 2),
+        noise_multipliers=(0.0, 1.0),
+        warmup_updates=2,
+        run_settings={
+            "train_size": 8,
+            "validation_size": 4,
+            "test_size": 4,
+            "batch_size": 4,
+            "updates": 3,
+        },
     )
     root = tmp_path / "noise_failure" / "grid_search"
     assert summary["variability"]["failed_runs"] == 1
@@ -263,39 +337,69 @@ def test_failed_noise_run_is_recorded_and_sweep_continues(tmp_path):
 
 def test_grid_search_saves_full_artifacts_for_noise_sweep(tmp_path):
     summary = run_grid_search(
-        run_logreg, LogReg, sample_logreg,
-        experiment="logreg", output_dir=tmp_path,
-        lr_grid=(0.1,), rho_grid=(0.0,), seeds=(1,),
-        noise_multipliers=(0.0, 1.0), warmup_updates=2,
-        run_settings={"train_size": 8, "validation_size": 4, "test_size": 4,
-                      "batch_size": 4, "updates": 3, "eval_every": 2},
+        run_logreg,
+        LogReg,
+        sample_logreg,
+        experiment="logreg",
+        output_dir=tmp_path,
+        lr_grid=(0.1,),
+        rho_grid=(0.0,),
+        seeds=(1,),
+        noise_multipliers=(0.0, 1.0),
+        warmup_updates=2,
+        run_settings={
+            "train_size": 8,
+            "validation_size": 4,
+            "test_size": 4,
+            "batch_size": 4,
+            "updates": 3,
+            "eval_every": 2,
+        },
     )
     root = tmp_path / "logreg" / "grid_search"
     assert summary["sgd"]["learning_rate"] == 0.1
     assert summary["rsgd"]["rho"] == 0.0
-    assert summary["gradient_scale"]["sgd"]["scale"] > 0
-    assert summary["noise_grid"]["sgd"][0] == 0.0
+    # Single gradient scale (from RSGD at selected settings), positive.
+    assert summary["gradient_scale"]["rsgd"]["scale"] > 0
+    # Both methods must see the same absolute noise levels for a fair comparison.
+    assert summary["noise_grid"]["sgd"] == summary["noise_grid"]["rsgd"]
+    assert summary["noise_grid"]["rsgd"][0] == 0.0
     assert len(list((root / "noise_sweep").rglob("metrics.json"))) == 4
     assert len(list((root / "noise_sweep").rglob("plots.png"))) == 4
 
 
 @pytest.mark.parametrize("experiment", ["logreg", "semicircle"])
 def test_cli_runs_both_experiments(experiment, tmp_path, capsys):
-    summary = main([
-        "--experiment", experiment,
-        "--output-dir", str(tmp_path),
-        "--seeds", "1",
-        "--lr-grid", "0.1",
-        "--rho-grid", "0",
-        "--noise-multipliers", "0,1",
-        "--warmup-updates", "2",
-        "--train-size", "8",
-        "--validation-size", "4",
-        "--test-size", "4",
-        "--batch-size", "4",
-        "--updates", "3",
-        "--eval-every", "2",
-    ])
+    summary = main(
+        [
+            "--experiment",
+            experiment,
+            "--output-dir",
+            str(tmp_path),
+            "--seeds",
+            "1",
+            "--lr-grid",
+            "0.1",
+            "--rho-grid",
+            "0",
+            "--noise-multipliers",
+            "0,1",
+            "--warmup-updates",
+            "2",
+            "--train-size",
+            "8",
+            "--validation-size",
+            "4",
+            "--test-size",
+            "4",
+            "--batch-size",
+            "4",
+            "--updates",
+            "3",
+            "--eval-every",
+            "2",
+        ]
+    )
     assert summary["sgd"]["learning_rate"] == 0.1
     assert summary["rsgd"]["rho"] == 0.0
     assert summary["grids"]["noise_multipliers"] == [0.0, 1.0]
@@ -304,23 +408,40 @@ def test_cli_runs_both_experiments(experiment, tmp_path, capsys):
 
 
 def test_cli_accepts_dataset_sensitivity_flags(tmp_path):
-    summary = main([
-        "--experiment", "logreg",
-        "--output-dir", str(tmp_path),
-        "--seeds", "1",
-        "--lr-grid", "0.1",
-        "--rho-grid", "0",
-        "--noise-multipliers", "0,1",
-        "--warmup-updates", "2",
-        "--train-size", "8",
-        "--validation-size", "4",
-        "--test-size", "4",
-        "--batch-size", "4",
-        "--updates", "3",
-        "--eval-every", "2",
-        "--data-seeds", "1,2",
-        "--data-sensitivity-seed", "2",
-    ])
+    summary = main(
+        [
+            "--experiment",
+            "logreg",
+            "--output-dir",
+            str(tmp_path),
+            "--seeds",
+            "1",
+            "--lr-grid",
+            "0.1",
+            "--rho-grid",
+            "0",
+            "--noise-multipliers",
+            "0,1",
+            "--warmup-updates",
+            "2",
+            "--train-size",
+            "8",
+            "--validation-size",
+            "4",
+            "--test-size",
+            "4",
+            "--batch-size",
+            "4",
+            "--updates",
+            "3",
+            "--eval-every",
+            "2",
+            "--data-seeds",
+            "1,2",
+            "--data-sensitivity-seed",
+            "2",
+        ]
+    )
     assert summary["dataset_sensitivity"]["training_seed"] == 2
     assert summary["dataset_sensitivity"]["data_seeds"] == [1, 2]
     root = tmp_path / "logreg" / "grid_search"
