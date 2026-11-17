@@ -142,3 +142,16 @@ guarantee that every stored example is visited. The assignment does not require
 epochs; it requires comparable budgets and loss plots against updates.
 The local checks and output-generation smoke run used Python 3.12.14 and PyTorch
 2.15.0; Python 3.13 remains the repository's declared target.
+
+## Batch-size uncertainty check
+
+Run `python -m experiments.run_batch_size_exp` from the repository root.
+The experiment keeps one logistic-regression model fixed on 1,000 Simulation 1
+examples and samples 200 batches with replacement for each size in
+`[8, 16, 32, 64, 128]`. There is no training or artificial gradient noise.
+It computes Equation (4), including the ridge, and saves results under
+`experiments/batch_size_outputs/`: full mean-S heatmaps in PNG/PDF, settings and
+summary matrices in JSON, and every sampled diagonal and ridge in CSV.
+The second heatmap row shows batch size times mean S to check the expected
+approximately inverse-batch-size scaling. Each row uses a shared colour scale.
+The off-diagonal entries are zero because the homework specifies a diagonal S.
