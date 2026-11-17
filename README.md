@@ -179,8 +179,13 @@ Outputs are written under `results/<experiment>/grid_search/`:
 - `failed_runs.csv`: context and error for every failed run. A tuning point with
   any failed seed is dropped from selection so all remaining points use the
   same number of seeds; failed noise runs are skipped but recorded.
+- `dataset_sensitivity.csv`, `dataset_sensitivity_aggregated.csv`: written only
+  with `--data-seeds`; both selected methods run at one fixed training seed over
+  every data seed and noise level. Its aggregated std isolates dataset
+  uncertainty, while `noise_sweep_aggregated.csv` isolates training randomness
+  when a single `--data-seed` is used.
 - `selection.json`: chosen parameters, mean validation losses, per-seed scales,
-  noise grids, and a `variability` block referencing the aggregated files.
+  noise grids, a `variability` block, and a `dataset_sensitivity` block.
 - `noise_sweep/`: one folder of saved run artifacts per method and selected
   parameter pair. Tuning runs use `save=False`, so no `tuning/` folder is written.
 
@@ -196,8 +201,13 @@ and `--noise-multipliers` override the defaults above. Training settings can be
 overridden with `--updates`, `--warmup-updates`, `--batch-size`, `--train-size`,
 `--validation-size`, `--test-size`, `--decay-scale`, and `--eval-every`;
 `--output-dir` changes the results root. By default each seed uses its own
-dataset (`data_seed=seed`), while `--data-seed` pins one dataset for all seeds
-so methods stay paired. See `--help` for the full list.
+dataset (`data_seed=seed`), so spread combines training and dataset randomness;
+`--data-seed` pins one dataset for all seeds so methods stay paired and spread
+reflects training randomness only. To measure dataset uncertainty separately,
+use `--data-seeds 1,2,3` instead: the main grid uses the first value as its fixed
+dataset, then both selected methods are rerun at every data seed with one fixed
+training seed (`--data-sensitivity-seed`, default: first training seed). The two
+flags are mutually exclusive. See `--help` for the full list.
 
 ## Batch-size uncertainty check
 

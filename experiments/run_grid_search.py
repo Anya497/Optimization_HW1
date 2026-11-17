@@ -61,7 +61,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--updates", type=int)
     parser.add_argument("--decay-scale", type=float)
     parser.add_argument("--eval-every", type=int)
-    parser.add_argument("--data-seed", type=int)
+    seed_group = parser.add_mutually_exclusive_group()
+    seed_group.add_argument("--data-seed", type=int)
+    seed_group.add_argument("--data-seeds", type=_ints)
+    parser.add_argument("--data-sensitivity-seed", type=int)
     return parser
 
 
@@ -83,6 +86,8 @@ def main(argv: list[str] | None = None) -> dict:
         noise_multipliers=args.noise_multipliers,
         warmup_updates=args.warmup_updates,
         data_seed=args.data_seed,
+        data_seeds=args.data_seeds,
+        data_sensitivity_seed=args.data_sensitivity_seed,
         run_settings=run_settings,
     )
     destination = Path(args.output_dir) / args.experiment / "grid_search"

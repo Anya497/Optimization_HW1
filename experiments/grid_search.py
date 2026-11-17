@@ -210,6 +210,8 @@ def run_grid_search(
     noise_multipliers: Sequence[float] = NOISE_MULTIPLIERS,
     warmup_updates: int = WARMUP_UPDATES,
     data_seed: int | None = None,
+    data_seeds: Sequence[int] | None = None,
+    data_sensitivity_seed: int | None = None,
     run_settings: dict | None = None,
 ) -> dict:
     """Sweep hyperparameters, select on validation loss, and sweep noise.
@@ -218,9 +220,21 @@ def run_grid_search(
     simulation model from a seed, and ``sampler`` generates its data. With
     ``data_seed=None`` each seed gets its own dataset; otherwise all runs at a
     given seed share the override, keeping SGD/RSGD paired.
+
+    ``data_seeds`` enables a separate study that holds the training seed fixed
+    while varying the dataset; its first value becomes the fixed dataset of the
+    main grid so training-seed spread is measured on one dataset.
     """
     if not seeds or not lr_grid or not rho_grid or warmup_updates < 1:
         raise ValueError("seeds, grids, and warmup_updates must be non-empty")
+    if data_seeds is not None:
+        if not data_seeds:
+            raise ValueError("data_seeds must be non-empty when supplied")
+        if data_seed is not None:
+            raise ValueError("use either data_seed or data_seeds, not both")
+        data_seed = data_seeds[0]
+    if data_sensitivity_seed is not None and data_seeds is None:
+        raise ValueError("data_sensitivity_seed requires data_seeds")
 
     settings = dict(DEFAULT_RUN_SETTINGS)
     if run_settings:
@@ -311,6 +325,44 @@ def run_grid_search(
         sweep_noise("sgd", sgd_lr, 0.0)
         + sweep_noise("rsgd", rsgd_lr, rsgd_rho)
     )
+
+    sensitivity_rows: list[dict] = []
+    sensitivity_seed = (
+        seeds[0] if data_sensitivity_seed is None else data_sensitivity_seed
+    )
+    if data_seeds is not None:
+        for sensitivity_data_seed in data_seeds:
+            for method, lr, rho in (
+                ("sgd", sgd_lr, 0.0), ("rsgd", rsgd_lr, rsgd_rho),
+            ):
+                for noise in noise_grids[method]:
+                    setup_seed(sensitivity_seed)
+                    try:
+                        metrics = runner(
+                            optimizer_cls,
+                            name=f"dataset_sensitivity/{method}_lr_{lr}_rho_{rho}",
+                            rho=rho, seed=sensitivity_seed, learning_rate=lr,
+                            gradient_noise=noise, data_seed=sensitivity_data_seed,
+                            output_dir=str(root), save=False, **settings,
+                        )
+                    except Exception as error:
+                        record_failure(
+                            failures, phase="dataset_sensitivity", method=method,
+                            learning_rate=lr, rho=rho, seed=sensitivity_seed,
+                            gradient_noise=noise, data_seed=sensitivity_data_seed,
+                            error=error,
+                        )
+                        continue
+                    sensitivity_rows.append({
+                        "method": method, "learning_rate": lr, "rho": rho,
+                        "seed": sensitivity_seed, "data_seed": sensitivity_data_seed,
+                        "gradient_noise": noise, **metrics,
+                    })
+        write_csv(root / "dataset_sensitivity.csv", sensitivity_rows)
+        write_csv(root / "dataset_sensitivity_aggregated.csv", aggregate_metrics(
+            sensitivity_rows, ("method", "gradient_noise"),
+        ))
+
     sgd_rows = [
         {"method": "sgd", **row} for rows in sgd_grid.values() for row in rows
     ]
@@ -350,6 +402,16 @@ def run_grid_search(
         },
         "gradient_scale": scales,
         "noise_grid": noise_grids,
+        "dataset_sensitivity": {
+            "enabled": data_seeds is not None,
+            "training_seed": sensitivity_seed if data_seeds is not None else None,
+            "data_seeds": list(data_seeds) if data_seeds is not None else [],
+            "runs": len(sensitivity_rows),
+            "file": "dataset_sensitivity.csv" if data_seeds is not None else None,
+            "aggregated_file": (
+                "dataset_sensitivity_aggregated.csv" if data_seeds is not None else None
+            ),
+        },
         "variability": {
             "std_definition": "sample std across successful evaluation seeds (n-1)",
             "tuning_file": "tuning_aggregated.csv",
