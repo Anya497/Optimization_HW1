@@ -14,8 +14,8 @@ SGD versus Robust SGD under Gradient Uncertainty
 - `src/grad_noise.py`: per-example gradients with optional Gaussian noise.
 - `src/train.py`: shared training and evaluation.
 - `experiments/run_logreg_exp.py`: Simulation 1 setup using the shared data pipeline.
-- `experiments/run_semicircle_exp.py`: Simulation 2 orchestration via `run_experiment`.
-- `experiments/common.py`: seed setup, saving results, and plotting.
+- `experiments/run_semicircle_exp.py`: Simulation 2 setup using the shared data pipeline.
+- `experiments/common.py`: shared `run_experiment`, seed setup, saving results, and plotting.
 - `tests/`: data, gradient, model, and training checks.
 
 ## Shared data pipeline
@@ -95,6 +95,10 @@ metrics = run_experiment(RobustSGD, name="sgd", rho=0, seed=seed,
                          gradient_noise=gradient_noise, learning_rate=learning_rate)
 print(metrics)
 ```
+
+`experiments.run_logreg_exp.run_experiment` has the same signature and settings,
+but uses the Gaussian sampler and the logistic model, and writes to `results/logreg`.
+Both runners delegate to `experiments.common.run_experiment`.
 
 For R-SGD, use the same class with, for example, `rho=0.5` and
 `name="rsgd_rho_0.5"`. The radius is passed to its constructor and saved with

@@ -19,3 +19,16 @@ class SemicircleNet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.output(torch.tanh(self.hidden(x))).squeeze(-1)
+
+
+class LogReg(nn.Module):
+    def __init__(self, seed: int = 0):
+        super().__init__()
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(seed)
+            self.lin = nn.Linear(2, 1, bias=True)
+            nn.init.xavier_uniform_(self.lin.weight, gain=nn.init.calculate_gain("tanh"))
+            nn.init.zeros_(self.lin.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.lin(x).squeeze(-1)
