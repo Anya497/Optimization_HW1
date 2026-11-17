@@ -114,6 +114,49 @@ def test_grid_search_records_every_point_and_selects_with_fake_runner(tmp_path):
     assert json.loads((root / "selection.json").read_text()) == summary
 
 
+def test_dataset_sensitivity_holds_training_seed_fixed(tmp_path):
+    calls = []
+
+    def fake_runner(optimizer_cls, name="optimizer", **settings):
+        calls.append((name, settings))
+        return {
+            "validation_loss": settings["learning_rate"] + settings["rho"],
+            "test_accuracy": 0.5,
+        }
+
+    summary = run_grid_search(
+        fake_runner, lambda seed: nn.Linear(2, 1), sample_logreg,
+        experiment="sensitivity", output_dir=tmp_path,
+        lr_grid=(0.1,), rho_grid=(0.0, 0.5), seeds=(1, 2),
+        noise_multipliers=(0.0, 1.0), warmup_updates=2,
+        data_seeds=(1, 2),
+        run_settings={"train_size": 8, "validation_size": 4, "test_size": 4,
+                      "batch_size": 4, "updates": 3},
+    )
+    root = tmp_path / "sensitivity" / "grid_search"
+    assert summary["data_seed"] == 1
+    assert summary["dataset_sensitivity"]["enabled"] is True
+    assert summary["dataset_sensitivity"]["training_seed"] == 1
+    assert summary["dataset_sensitivity"]["data_seeds"] == [1, 2]
+    sensitivity_calls = [
+        settings for name, settings in calls
+        if name.startswith("dataset_sensitivity/")
+    ]
+    assert len(sensitivity_calls) == 8
+    assert {settings["seed"] for settings in sensitivity_calls} == {1}
+    assert {settings["data_seed"] for settings in sensitivity_calls} == {1, 2}
+    tuning_calls = [
+        settings for name, settings in calls if name.startswith("tuning/")
+    ]
+    assert {settings["data_seed"] for settings in tuning_calls} == {1}
+    with (root / "dataset_sensitivity.csv").open() as stream:
+        assert len(list(csv.DictReader(stream))) == 8
+    with (root / "dataset_sensitivity_aggregated.csv").open() as stream:
+        groups = list(csv.DictReader(stream))
+    assert len(groups) == 4
+    assert all(group["n_runs"] == "2" for group in groups)
+
+
 def test_failed_tuning_seed_is_recorded_and_point_is_excluded(tmp_path):
     def flaky_runner(optimizer_cls, name="optimizer", **settings):
         if settings["rho"] == 0.5 and settings["seed"] == 1:
@@ -185,3 +228,34 @@ def test_cli_runs_both_experiments(experiment, tmp_path, capsys):
     assert summary["grids"]["noise_multipliers"] == [0.0, 1.0]
     assert (tmp_path / experiment / "grid_search" / "selection.json").is_file()
     assert experiment in capsys.readouterr().out
+
+
+def test_cli_accepts_dataset_sensitivity_flags(tmp_path):
+    summary = main([
+        "--experiment", "logreg",
+        "--output-dir", str(tmp_path),
+        "--seeds", "1",
+        "--lr-grid", "0.1",
+        "--rho-grid", "0",
+        "--noise-multipliers", "0,1",
+        "--warmup-updates", "2",
+        "--train-size", "8",
+        "--validation-size", "4",
+        "--test-size", "4",
+        "--batch-size", "4",
+        "--updates", "3",
+        "--eval-every", "2",
+        "--data-seeds", "1,2",
+        "--data-sensitivity-seed", "2",
+    ])
+    assert summary["dataset_sensitivity"]["training_seed"] == 2
+    assert summary["dataset_sensitivity"]["data_seeds"] == [1, 2]
+    root = tmp_path / "logreg" / "grid_search"
+    assert (root / "dataset_sensitivity.csv").is_file()
+    assert (root / "dataset_sensitivity_aggregated.csv").is_file()
+
+
+def test_cli_rejects_both_data_seed_flags():
+    with pytest.raises(SystemExit) as error:
+        main(["--experiment", "logreg", "--data-seed", "1", "--data-seeds", "1,2"])
+    assert error.value.code == 2
