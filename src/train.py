@@ -75,9 +75,12 @@ def train(
 
     runtime_seconds = time.perf_counter() - started
     train_metrics = evaluate(model, loaders["train_eval"])
+    validation_metrics = evaluate(model, loaders["validation"])
     test_metrics = evaluate(model, loaders["test"])
     return history, {
         "train_loss": train_metrics["loss"],
+        "validation_loss": validation_metrics["loss"],
+        "validation_accuracy": validation_metrics["accuracy"],
         "test_loss": test_metrics["loss"],
         "test_accuracy": test_metrics["accuracy"],
         "runtime_seconds": runtime_seconds,

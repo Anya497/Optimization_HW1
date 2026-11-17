@@ -63,6 +63,8 @@ The training code runs on CPU and uses stable binary cross-entropy from logits,
 without weight decay or preprocessing. It uses per-example automatic gradients,
 adds independent Gaussian gradient noise, and evaluates only uncorrupted data.
 Both methods use the schedule `lr / sqrt(1 + k / decay_scale)` with zero-based k.
+The returned metrics include `validation_loss` and `validation_accuracy` from the
+final uncorrupted validation set; hyperparameter selection uses the loss.
 
 `train(model, loaders, optimizer)` accepts a `torch.optim.Optimizer` instance.
 It uses the `RobustSGD` implementation in `src/optimizer.py`:
@@ -79,7 +81,8 @@ any differences between groups. Use `RobustSGD` for both methods: `rho=0` is the
 ordinary SGD baseline, and `rho>0` enables robustness.
 After each step, `optimizer.zero_step` reports whether `g^T S^-1 g <= rho^2`.
 Zero-step frequency counts this condition, rather than unchanged parameters due
-to rounding or a zero learning rate.
+to rounding or a zero learning rate. Uncertainty estimation needs at least two
+per-example observations per update; a single observation raises `ValueError`.
 
 ```python
 from experiments.run_semicircle_exp import run_experiment
