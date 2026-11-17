@@ -17,6 +17,7 @@ SGD versus Robust SGD under Gradient Uncertainty
 - `experiments/run_semicircle_exp.py`: Simulation 2 setup using the shared data pipeline.
 - `experiments/common.py`: shared `run_experiment`, seed setup, saving results, and plotting.
 - `experiments/grid_search.py`: validation-loss selection and gradient-noise sweep.
+- `experiments/run_grid_search.py`: CLI entry point choosing the simulation.
 - `tests/`: data, gradient, model, and training checks.
 
 ## Shared data pipeline
@@ -175,6 +176,21 @@ Outputs are written under `results/<experiment>/grid_search/`:
   and the resulting noise grids.
 - `tuning/`, `noise_sweep/`: saved run artifacts; `tuning/` is empty because
   tuning runs use `save=False`, and `noise_sweep/` contains one folder per run.
+
+Run the search from the repository root:
+
+```bash
+python -m experiments.run_grid_search --experiment logreg
+python -m experiments.run_grid_search --experiment semicircle
+```
+
+`--experiment` is required. Comma-separated `--seeds`, `--lr-grid`, `--rho-grid`,
+and `--noise-multipliers` override the defaults above. Training settings can be
+overridden with `--updates`, `--warmup-updates`, `--batch-size`, `--train-size`,
+`--validation-size`, `--test-size`, `--decay-scale`, and `--eval-every`;
+`--output-dir` changes the results root. By default each seed uses its own
+dataset (`data_seed=seed`), while `--data-seed` pins one dataset for all seeds
+so methods stay paired. See `--help` for the full list.
 
 ## Batch-size uncertainty check
 
