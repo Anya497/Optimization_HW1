@@ -33,8 +33,10 @@ Reuse: `experiments/common.py` (`setup_seed`, `save_results`), `src/data/common.
 
 - **T2** — Add (2) per-seed variability aggregation and failed-run tracking,
   (3) a dataset-vs-training randomness study with CLI flags, and (4) an explicit
-  search budget in `selection.json`. Depends on: T1. Status: `[in progress]`
-  (feature branch `T2-report-data`, review fixes pending).
+  search budget in `selection.json`. Depends on: T1. Status: `[done]` (fa2ac31).
+  Outcome: per-seed mean/std tables and failure log, dataset-vs-training
+  randomness study behind `--data-seeds`, and a full search-budget block in
+  `selection.json`; four commits fast-forward merged into `anya`.
 
 Overlap: T2 and T1 both touch `experiments/grid_search.py`,
 `experiments/run_grid_search.py`, `tests/test_grid_search.py`, and `README.md`;
