@@ -2,6 +2,7 @@ import csv
 import json
 
 import numpy as np
+import pytest
 from PIL import Image
 
 from experiments.grid_search import run_grid_search
@@ -27,7 +28,8 @@ def test_error_bands_use_sample_standard_deviation_across_seeds():
     np.testing.assert_allclose(std, np.sqrt([2., 8.]))
 
 
-def test_plot_saved_grid_search_uses_existing_metric_summary(tmp_path):
+@pytest.mark.parametrize("legacy", [False, True])
+def test_plot_saved_grid_search_uses_existing_metric_summary(tmp_path, legacy):
     run_grid_search(
         run_experiment, LogReg, sample_points, experiment="logreg", output_dir=tmp_path,
         lr_grid=(0.1,), rho_grid=(0.0,), seeds=(1,), noise_multipliers=(0., 1.),
@@ -36,9 +38,20 @@ def test_plot_saved_grid_search_uses_existing_metric_summary(tmp_path):
                       "batch_size": 4, "updates": 3, "eval_every": 2},
     )
     root = tmp_path / "logreg" / "grid_search"
+    if legacy:
+        for path in (root / "noise_sweep").rglob("losses.csv"):
+            with path.open() as file:
+                history = list(csv.DictReader(file))
+            for row in history:
+                row.pop("validation_accuracy")
+            with path.open("w", newline="") as file:
+                writer = csv.DictWriter(file, fieldnames=list(history[0]))
+                writer.writeheader()
+                writer.writerows(history)
     output = plot_results(root, seed=1)
     figures = list(output.glob("*.png"))
-    assert len(figures) == 5
+    assert len(figures) == (5 if legacy else 6)
+    assert (output / "validation_accuracy.png").is_file() == (not legacy)
     for path in figures:
         with Image.open(path) as image:
             image.verify()
