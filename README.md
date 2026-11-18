@@ -235,10 +235,12 @@ The off-diagonal entries are zero because the homework specifies a diagonal S.
 
 After a grid search, run `python -m experiments.plot_results results/logreg/grid_search --seed 1`
 (or use `results/semicircle/grid_search`). It reads the existing results and saves
-five comparison figures under `grid_search/plots/`, reusing the grid search's
+six comparison figures under `grid_search/plots/`, reusing the grid search's
 existing aggregated metric table.
 See [experiments/plots.md](experiments/plots.md) for the PDF requirements, exact
 figure list, error-bar definitions, and reduced-budget verification examples.
+The added validation-accuracy curve uses accuracy recorded alongside loss at
+each evaluation update. Old histories without accuracy retain the five original plots.
 
 ## Logistic-regression descent views
 

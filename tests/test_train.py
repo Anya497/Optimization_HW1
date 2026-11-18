@@ -153,8 +153,11 @@ class TrainingTests(unittest.TestCase):
                                test_size=10, batch_size=4, updates=2)
         model = LinearLogit()
         optimizer = RobustSGD(model.parameters(), lr=0.1)
-        _, metrics = train(model, loaders, optimizer)
+        history, metrics = train(model, loaders, optimizer, eval_every=1)
         validation = evaluate(model, loaders["validation"])
+        self.assertEqual([row["update"] for row in history], [0, 1, 2])
+        self.assertEqual(history[0]["validation_accuracy"], 0.5)
+        self.assertAlmostEqual(history[-1]["validation_accuracy"], validation["accuracy"])
         self.assertAlmostEqual(metrics["validation_loss"], validation["loss"])
         self.assertAlmostEqual(metrics["validation_accuracy"], validation["accuracy"])
 

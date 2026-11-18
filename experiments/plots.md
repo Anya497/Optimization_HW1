@@ -8,11 +8,12 @@ Standalone runs keep their figures by default (`plot=False` disables them).
 
 ## Required outputs and their figures
 
-For **each simulation**, the command writes five figures under `grid_search/plots/`:
+For **each simulation**, the command writes six figures under `grid_search/plots/`:
 
 | File | What it shows | Why it is included |
 | --- | --- | --- |
 | `loss_curves.png` | Training and validation loss versus updates, SGD/R-SGD together, one row per noise level | Explicitly required by Section 3 |
+| `validation_accuracy.png` | Validation accuracy versus updates at every noise level, with mean ± sample SD across seeds | Additional prediction-quality view; recorded at the same updates as the losses |
 | `decision_boundaries.png` | Both selected models on the test set, at one stated evaluation seed, for every noise level | Section 3 explicitly requires a decision boundary for a stated seed; showing every noise level makes comparison easier |
 | `noise_summary.png` | Final training loss, test loss, test accuracy, runtime, gradient-evaluation count and zero-step frequency versus noise | Sections 3 and 4 require reporting these quantities; plotting them is our presentation choice |
 | `radius_sensitivity.png` | Training loss, validation loss and zero-step frequency versus radius, at each noise level | Section 4.4 requires a small sensitivity study of loss and zero-step frequency; the exact plot format is our choice |
@@ -24,7 +25,7 @@ The solver checks in Section 2(b) need numerical evidence, not a prescribed plot
 
 ## Fair comparisons and error bars
 
-The main loss curves, noise summary and boundaries use the settings saved in
+The main loss/validation-accuracy curves, noise summary and boundaries use the settings saved in
 `selection.json`: SGD at its selected learning rate and rho=0; R-SGD at its
 selected learning rate and radius. Those choices stay frozen across noise
 levels. The plotter does not choose a better radius using test results or the
@@ -78,6 +79,14 @@ python -m experiments.plot_results results/semicircle/grid_search --seed 1
 
 Choose a seed present in the saved evaluation runs. Without `--seed`, the first
 seed in `selection.json` is used. No config file or additional dependency is needed.
+
+Validation accuracy is recorded in each loss-history row, starting at update
+zero and then every `eval_every` updates. It reuses the validation evaluation
+already needed for loss, so there is no additional validation pass. Old histories
+without this column still produce the original five figures; the accuracy
+curve is skipped with a message. Intermediate accuracies cannot be recovered
+from final weights alone. Replaying the selected runs with the same settings
+and seeds records the missing history without retuning.
 
 ## Local verification examples
 

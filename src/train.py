@@ -48,10 +48,13 @@ def train(
     gradient_evaluations = 0
 
     def record(update):
+        train_metrics = evaluate(model, loaders["train_eval"])
+        validation_metrics = evaluate(model, loaders["validation"])
         history.append({
             "update": update,
-            "train_loss": evaluate(model, loaders["train_eval"])["loss"],
-            "validation_loss": evaluate(model, loaders["validation"])["loss"],
+            "train_loss": train_metrics["loss"],
+            "validation_loss": validation_metrics["loss"],
+            "validation_accuracy": validation_metrics["accuracy"],
         })
 
     record(0)

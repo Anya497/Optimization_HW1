@@ -79,27 +79,41 @@ def plot_results(root, seed=None):
         return [run for run in chosen if run["method"] == method
                 and run["settings"]["gradient_noise"] == noise]
 
-    # Section 3: training and validation losses against updates at every noise level.
-    fig, axes = plt.subplots(len(noises), 2, squeeze=False,
-                             figsize=(10, 2.8 * len(noises)), layout="constrained")
-    for row, noise in enumerate(noises):
-        for column, metric in enumerate(("train_loss", "validation_loss")):
-            ax = axes[row, column]
-            for method, (label, color) in METHODS.items():
-                samples = group(method, noise)
-                if not samples:
-                    continue
-                updates = [int(point["update"]) for point in samples[0]["history"]]
-                mean, std = mean_std([[float(point[metric]) for point in run["history"]]
-                                      for run in samples])
-                ax.plot(updates, mean, color=color, linestyle="--" if method == "rsgd" else "-",
-                        label=f"{label} (n={len(samples)})")
-                ax.fill_between(updates, mean - std, mean + std, color=color, alpha=0.15)
-            ax.set(xlabel="Updates", ylabel="BCE loss",
-                   title=f"{'Training' if column == 0 else 'Validation'} | σ={noise:.3g}")
-            ax.legend(fontsize=8)
-    fig.suptitle("Frozen settings | mean ± 1 sample SD", fontsize=14)
-    save_figure(fig, output, "loss_curves")
+    curve_figures = []
+    for filename, metrics in (("loss_curves", ("train_loss", "validation_loss")),
+                              ("validation_accuracy", ("validation_accuracy",))):
+        if filename == "validation_accuracy" and any(
+            "validation_accuracy" not in point for run in chosen for point in run["history"]
+        ):
+            print("Validation accuracy was not recorded in these histories; rerun the selected runs to plot it.")
+            continue
+        fig, axes = plt.subplots(len(noises), len(metrics), squeeze=False,
+                                 figsize=(5 * len(metrics), 2.8 * len(noises)), layout="constrained")
+        for row, noise in enumerate(noises):
+            for column, metric in enumerate(metrics):
+                ax = axes[row, column]
+                accuracy = metric == "validation_accuracy"
+                for method, (label, color) in METHODS.items():
+                    samples = group(method, noise)
+                    if not samples:
+                        continue
+                    updates = [int(point["update"]) for point in samples[0]["history"]]
+                    mean, std = mean_std([[float(point[metric]) for point in run["history"]]
+                                          for run in samples])
+                    if accuracy:
+                        mean, std = 100 * mean, 100 * std
+                    ax.plot(updates, mean, color=color, linestyle="--" if method == "rsgd" else "-",
+                            label=f"{label} (n={len(samples)})")
+                    ax.fill_between(updates, mean - std, mean + std, color=color, alpha=0.15)
+                label = "Validation accuracy" if accuracy else "Training" if metric == "train_loss" else "Validation"
+                ax.set(xlabel="Updates", ylabel="Accuracy (%)" if accuracy else "BCE loss",
+                       title=f"{label} | σ={noise:.3g}")
+                if accuracy:
+                    ax.set_ylim(0, 100)
+                ax.legend(fontsize=8)
+        fig.suptitle("Frozen settings | mean ± 1 sample SD", fontsize=14)
+        save_figure(fig, output, filename)
+        curve_figures.append(filename)
 
     # Reuse metric summaries; only loss histories need new statistics.
     rows = [row for row in aggregated if all(
@@ -202,10 +216,10 @@ def plot_results(root, seed=None):
         "metric_source": "noise_sweep_aggregated.csv",
         "counts": [{key: row[key] for key in ("method", "gradient_noise", "n_runs")} for row in rows],
         "failed_runs": selection["variability"]["failed_runs"],
-        "figures": ["loss_curves", "noise_summary", "radius_sensitivity", "tuning", "decision_boundaries"],
+        "figures": curve_figures + ["noise_summary", "radius_sensitivity", "tuning", "decision_boundaries"],
     }
     (output / "plot_manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"Saved five figures to {output}")
+    print(f"Saved {len(manifest['figures'])} figures to {output}")
     return output
 
 
