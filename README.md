@@ -239,3 +239,10 @@ five comparison figures under `grid_search/plots/`, reusing the grid search's
 existing aggregated metric table.
 See [experiments/plots.md](experiments/plots.md) for the PDF requirements, exact
 figure list, error-bar definitions, and reduced-budget verification examples.
+
+## Logistic-regression descent views
+
+Run `python -m experiments.run_logreg_descent` for paired SGD/R-SGD trajectories
+as looping 2D and 3D GIFs with bias fixed at zero (the third axis is loss).
+See [experiments/logreg_descent.md](experiments/logreg_descent.md) for the surface
+interpretation, settings, saved parameter paths, and clean/noisy examples.
