@@ -95,3 +95,11 @@ python -m experiments.plot_results results/plot_smoke/logreg/grid_search --seed 
 
 Use `--experiment semicircle` for the other simulation and its corresponding
 results path in the plotting command.
+
+## Descent trajectories
+
+The separate [logistic descent experiment](logreg_descent.md) trains paired
+SGD/R-SGD runs and records every parameter update. It provides looping GIFs
+of two trainable weights on exact loss contours and a 3D loss surface,
+with bias fixed at zero for this visualization experiment. These are
+illustrative additions to the required report figures.
