@@ -1,3 +1,6 @@
+\section{General Experimental Setup}
+\label{sec:general_setup}
+
 In this project, we compare standard Stochastic Gradient Descent (SGD) against Robust SGD (R-SGD) under gradient uncertainty. The comparison is conducted across two distinct tasks: (i) a single-layer logistic regression on linearly separable Gaussian data, and (ii) a small two-layer neural network (MLP) on a noisy semicircles dataset. In both cases, the models are trained to minimize the mean binary cross-entropy loss without additional regularization.
 
 \subsection{Hyperparameter Tuning and Freezing}
@@ -23,4 +26,8 @@ where \(u_i(\theta_k) = \nabla_\theta \ell(t_\theta(a_i), y_i)\) is the true per
 Because the raw gradient magnitudes differ between the two tasks, the noise levels were chosen relative to the empirical scale of the gradients. We defined a base noise scale \(\sigma_{\text{scale}}\) (measured during a warmup phase) and evaluated the optimizers at multipliers \(\sigma \in \{0, 0.1, 0.3, 1.0, 2.5\} \cdot \sigma_{\text{scale}}\). The case \(\sigma=0\) serves as the natural baseline, representing only the inherent stochasticity of mini-batch sampling. 
 
 \subsection{Evaluation Protocol}
-For each noise level and each of the 5 evaluation seeds, we trained the models from matched initializations. To ensure a fair comparison, both SGD and R-SGD were exposed to the exact same absolute noise levels and mini-batch sequences within a given seed. The performance was evaluated on uncorrupted validation and test data, reporting the final training loss, test loss, test accuracy, runtime, and zero-step frequency.
+For each noise level and each evaluation seed, we trained the models from matched initializations. 
+To ensure a fair comparison, both SGD and R-SGD were exposed to the exact same absolute noise 
+levels and mini-batch sequences within a given seed. The performance was evaluated on uncorrupted 
+validation and test data, reporting the final training loss, test loss, test accuracy, runtime, 
+and zero-step frequency.

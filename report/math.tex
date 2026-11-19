@@ -1,3 +1,5 @@
+\section{Derivation and interpretation}
+
 \subsection{(a)}
 For $S \succ 0$, consider the robust linear problem $\min_{x \in \mathcal{X}} \max_{c = \mu + S^{1/2}u, \|u\| \leq \rho} c^T x$, derive the inner maximum and show a maximizer when $x \neq 0$. Explain how $x, \mu$ become $d, g_k$ in a local gradient model.
 
@@ -49,6 +51,7 @@ However, this doesn't imply that the true gradient vanishes: $d_k = 0 \not \Righ
 \subsection{(d)}
 Derive the optimality condition for a nonzero robust step: $$g_k + \rho \frac{S_k d_k}{\sqrt{d^T_k S_k d_k}} + \alpha^{-1}_k d_k = 0.$$ For $S_k = s I$ with $s > 0$ and $g_k \neq 0$, show that this simplifies to $d_k = -\alpha_k (1 - \rho \sqrt{s} / \|g_k\|)_+ g_k$, where $(a)_+ = \max\{a, 0\}$. Also address the case $g_k = 0$. Explain how isotropic and anisotropic uncertainty can affect the magnitude and direction of the update.
 \subsubsection{Solution}
+\label{sec:isotropic_noise}
 For a nonzero step, the robust objective is differentiable. Its gradient is
 $$\nabla F(d) = g_k + \rho \frac{S_k d}{\sqrt{d^T S_k d}} + \frac{d}{\alpha_k}$$
 Therefore, the first-order optimality condition is
