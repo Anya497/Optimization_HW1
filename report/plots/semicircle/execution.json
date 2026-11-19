@@ -1,0 +1,21 @@
+{
+  "elapsed_seconds": 73.27012529200874,
+  "completed_runs": 990,
+  "attempted_runs": 990,
+  "failed_runs": 0,
+  "workers": 8,
+  "threads_per_worker": 1,
+  "budget": "500 updates per run, fixed batch 32; 16000 sampled examples per run",
+  "selection": {
+    "sgd": {
+      "learning_rate": 10.0,
+      "rho": 0.0,
+      "mean_validation_loss": 0.003218589339405298
+    },
+    "rsgd": {
+      "learning_rate": 10.0,
+      "rho": 1.0,
+      "mean_validation_loss": 0.004568880245089531
+    }
+  }
+}

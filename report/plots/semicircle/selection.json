@@ -1,0 +1,146 @@
+{
+  "experiment": "semicircle",
+  "selection_rule": "minimum mean validation loss; SGD rho=0, R-SGD rho>0",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "grids": {
+    "learning_rate": [
+      0.01,
+      0.1,
+      1.0,
+      3.0,
+      10.0,
+      100.0
+    ],
+    "rho": [
+      0.0,
+      0.1,
+      0.3,
+      1.0,
+      3.0
+    ],
+    "noise_multipliers": [
+      0.0,
+      0.1,
+      0.3,
+      1.0,
+      2.5
+    ]
+  },
+  "run_settings": {
+    "train_size": 1000,
+    "validation_size": 400,
+    "test_size": 400,
+    "batch_size": 32,
+    "updates": 500,
+    "decay_scale": 50.0,
+    "eval_every": 25
+  },
+  "data_seed": 42,
+  "sgd": {
+    "learning_rate": 10.0,
+    "rho": 0.0,
+    "mean_validation_loss": 0.003218589339405298
+  },
+  "rsgd": {
+    "learning_rate": 10.0,
+    "rho": 1.0,
+    "mean_validation_loss": 0.004568880245089531
+  },
+  "gradient_scale": {
+    "rsgd": {
+      "scale": 0.1703896378279805,
+      "per_seed": [
+        0.1462004014695748,
+        0.12876718965293063,
+        0.19372460625851384,
+        0.18682601256406722,
+        0.17802615732202792,
+        0.18051279289796676,
+        0.1744793748444441,
+        0.1647912051190044,
+        0.17886772842697815,
+        0.17568555560577961,
+        0.16192653080420405,
+        0.17441922502878163,
+        0.19424264611206696,
+        0.13559038938788673,
+        0.18178475192548094
+      ]
+    }
+  },
+  "noise_grid": {
+    "sgd": [
+      0.0,
+      0.01703896378279805,
+      0.05111689134839415,
+      0.1703896378279805,
+      0.4259740945699513
+    ],
+    "rsgd": [
+      0.0,
+      0.01703896378279805,
+      0.05111689134839415,
+      0.1703896378279805,
+      0.4259740945699513
+    ]
+  },
+  "search_budget": {
+    "tuning": {
+      "runs": 540,
+      "updates": 270000,
+      "gradient_evaluations": 8640000
+    },
+    "noise_sweep": {
+      "runs": 450,
+      "updates": 225000,
+      "gradient_evaluations": 7200000
+    },
+    "dataset_sensitivity": {
+      "runs": 0,
+      "updates": 0,
+      "gradient_evaluations": 0
+    },
+    "warmup": {
+      "runs": 0,
+      "updates": 750,
+      "gradient_evaluations": 24000
+    },
+    "failed_runs": 0,
+    "total_runs": 990,
+    "total_updates": 495750,
+    "total_gradient_evaluations": 15864000
+  },
+  "dataset_sensitivity": {
+    "enabled": false,
+    "training_seed": null,
+    "data_seeds": [],
+    "runs": 0,
+    "file": null,
+    "aggregated_file": null
+  },
+  "variability": {
+    "std_definition": "sample std across successful evaluation seeds (n-1)",
+    "tuning_file": "tuning_aggregated.csv",
+    "noise_sweep_file": "noise_sweep_aggregated.csv",
+    "failed_runs_file": "failed_runs.csv",
+    "failed_runs": 0
+  },
+  "selection_metric": "validation_loss",
+  "noise_calibration": "Calibrated at the unrestricted validation-loss winner, as in the original run."
+}

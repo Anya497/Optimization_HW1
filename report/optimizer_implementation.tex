@@ -1,1 +1,17 @@
 \section{Implementation and numerical checks}
+
+The numerical checks are implemented as automated tests in the repository's
+\texttt{tests/} directory and run in GitHub Actions CI on pull requests and on
+pushes to \texttt{main}. They can also be run locally from the repository root:
+\begin{verbatim}
+python -m pytest -v
+\end{verbatim}
+
+The checks cover the zero-radius limit against ordinary SGD, the robust
+zero-step rule, the nonzero-step optimality residual, and the shared
+uncertainty ridge in \texttt{tests/test\_rsgd.py}.
+The network's per-example gradients are checked against central finite
+differences for all 33 parameters in \texttt{tests/test\_model.py}.
+Further tests in \texttt{tests/test\_train.py} compare per-example gradients
+with individual backpropagation and check reproducible training, learning-rate
+decay, and separation of gradient corruption from the evaluation data.
