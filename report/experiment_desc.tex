@@ -1,0 +1,26 @@
+In this project, we compare standard Stochastic Gradient Descent (SGD) against Robust SGD (R-SGD) under gradient uncertainty. The comparison is conducted across two distinct tasks: (i) a single-layer logistic regression on linearly separable Gaussian data, and (ii) a small two-layer neural network (MLP) on a noisy semicircles dataset. In both cases, the models are trained to minimize the mean binary cross-entropy loss without additional regularization.
+
+\subsection{Hyperparameter Tuning and Freezing}
+To ensure a fair comparison, we used a fixed mini-batch size and 
+tuned the learning rate for both optimizers, as well as the robustness 
+radius \(\rho\) for R-SGD (including the baseline \(\rho=0\)). 
+The hyperparameter grid search was performed in a clean environment 
+(without artificial gradient noise, \(\sigma=0\)), and the configuration 
+that minimized the mean validation loss was selected. Once the optimal 
+learning rate and \(\rho\) were found, these settings were 
+frozen for the subsequent noise sweep. 
+
+\subsection{Isotropic Gradient Noise Model}
+To evaluate the robustness of the optimizers, we introduced an isotropic 
+Gaussian perturbation to the per-example gradients. For a mini-batch of 
+size \(b\), the observed gradient for the \(i\)-th example at optimization 
+step \(k\) is modeled as:
+\begin{equation}
+    v_{k,i} = u_i(\theta_k) + \sigma z_{k,i}, \quad z_{k,i} \sim \mathcal{N}(0, I_p)
+\end{equation}
+where \(u_i(\theta_k) = \nabla_\theta \ell(t_\theta(a_i), y_i)\) is the true per-example gradient, \(\sigma \ge 0\) is the noise magnitude, and \(I_p\) is the \(p \times p\) identity matrix. The perturbations \(z_{k,i}\) are sampled independently across observations and iterations. 
+
+Because the raw gradient magnitudes differ between the two tasks, the noise levels were chosen relative to the empirical scale of the gradients. We defined a base noise scale \(\sigma_{\text{scale}}\) (measured during a warmup phase) and evaluated the optimizers at multipliers \(\sigma \in \{0, 0.1, 0.3, 1.0, 2.5\} \cdot \sigma_{\text{scale}}\). The case \(\sigma=0\) serves as the natural baseline, representing only the inherent stochasticity of mini-batch sampling. 
+
+\subsection{Evaluation Protocol}
+For each noise level and each of the 5 evaluation seeds, we trained the models from matched initializations. To ensure a fair comparison, both SGD and R-SGD were exposed to the exact same absolute noise levels and mini-batch sequences within a given seed. The performance was evaluated on uncorrupted validation and test data, reporting the final training loss, test loss, test accuracy, runtime, and zero-step frequency.

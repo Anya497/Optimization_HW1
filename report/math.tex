@@ -1,0 +1,85 @@
+\subsection{(a)}
+For $S \succ 0$, consider the robust linear problem $\min_{x \in \mathcal{X}} \max_{c = \mu + S^{1/2}u, \|u\| \leq \rho} c^T x$, derive the inner maximum and show a maximizer when $x \neq 0$. Explain how $x, \mu$ become $d, g_k$ in a local gradient model.
+
+\subsubsection{Solution}
+Expanding scalar product
+$$(\mu + S^{1/2} u)^T x = \mu^T x + (S^{1/2} u)^T x = \mu^T x + u^T S^{1/2} x$$
+$$\max_{\|u\|_2 \leq \rho} (\mu + S^{1/2} u)^T x = \max_{\|u\|_2 \leq \rho} (\mu^T x + u^T S^{1/2} x) = \mu^T x + \max_{\|u\|_2 \leq \rho} u^T S^{1/2} x$$
+By the Cauchy-Schwarz inequality:
+$$u^T S^{1/2} x = \{a^T b \leq \|a\|_2 \|b\|_2\} \leq \|u\|_2 \|S^{1/2} x\|_2 = \{\|u\|_2 \leq \rho\} \leq \rho \|S^{1/2} x\|_2$$
+$$\max_{\|u\|_2 \leq \rho} u^T S^{1/2} x = \rho \|S^{1/2} x\|_2 = \rho \sqrt{x^T S x}$$
+Get the final result:
+$$\max_{\|u\|_2 \leq \rho} (\mu + S^{1/2} u)^T x = \mu^T x + \rho \sqrt{x^T S x}$$
+This upper bound is attained for $x \neq 0$ by:
+$$u^* = \rho \frac{S^{1/2}x}{\|S^{1/2} x\|}_2$$
+In the R-SGD formulation, setting $\mu = g_k, S = S_k, x = d$ yields:
+$$\max_{h \in G_k} h^T d = g^T_k d + \rho \sqrt{d^T S_k d}$$
+Thus, the uncertainty introduces an additional nonnegative penalty that depends on the proposed update direction and the uncertainty matrix.
+
+\subsection{(b)}
+Derive the equivalent formulation
+$$d_k = \arg \min_d \left\{g^T_k d + \rho \sqrt{d^T S_k d} + \frac{\|d\|^2_2}{2 \alpha_k}\right\},$$ and show that SGD is recoverred when $\rho = 0$. Discuss existance and uniqueness of the robust step.
+\subsubsection{Solution}
+Using the result from part (a), the robust optimization problem becomes:
+$$d_k = \arg \min_d \max_{h \in \mathcal{G}_k} \left\{h^T d + \frac{\|d\|^2_2}{2 \alpha_k}\right\} = \arg \min_d \left\{g^T_k d + \rho \sqrt{d^T S_k d} + \frac{\|d\|^2_2}{2 \alpha_k}\right\}$$
+When $\rho = 0$:
+$$d_k = \arg \min_d \left\{g^T_k d + \frac{\|d\|^2_2}{2 \alpha_k}\right\}$$
+$$\nabla_d = g_k + \frac{1}{\alpha_k} d = 0 \Rightarrow d_k = -\alpha_k g_k$$
+Therefore,
+$$\theta_{k+1} = \theta_k + d_k = \theta_k - \alpha_k g_k$$
+R-SGD recovers the standard SGD update when the uncertainty radius is zero.
+
+\subsection{(c)}
+Investigate $d_k$ when $$g^T_k S^{-1}_k g_k \leq \rho^2.$$ Does it imply $\nabla f(\theta_k) = 0$?
+\subsubsection{Solution}
+Consider the robust objective:
+$$F(d) = g^T_k d + \rho \sqrt{d^T S_k d} + \frac{\|d\|^2_2}{2 \alpha_k}$$
+By the Cauchy-Schwarz inequality,
+$$g^T_k d = (S^{-1/2}_k g_k)^T (S^{1/2}_k d) \geq - \|S^{-1/2}_k g_k\|_2 \|S^{1/2}_k d\|_2 \geq -\sqrt{g^T_k S^{-1}_k g_k} \sqrt{d^T S_k d}$$
+Therefore,
+$$F(d) \geq \left(\rho - \sqrt{g^T_k S^{-1}_k g_k}\right) \sqrt{d^T S_k d} + \frac{\|d\|^2_2}{2 \alpha_k}$$
+If 
+$$g^T_k S^{-1}_k g_k \leq \rho^2 \Rightarrow \sqrt{g^T_k S^{-1}_k g_k} \leq \rho \Rightarrow \rho - \sqrt{g^T_k S^{-1}_k g_k} \geq 0$$ 
+we get
+$$F(d) \geq \underbrace{\left(\rho - \sqrt{g^T_k S^{-1}_k g_k} \sqrt{d^T S_k d}\right)}_{\geq 0} + \underbrace{\frac{\|d\|^2_2}{2 \alpha_k}}_{\geq 0}$$
+Hence, $F(d) \geq 0 = F(0)$
+Since the objective is strictly convex, the unique minimizer is $d_k = 0$.
+However, this doesn't imply that the true gradient vanishes: $d_k = 0 \not \Rightarrow \nabla f(\theta_k) = 0$
+
+\subsection{(d)}
+Derive the optimality condition for a nonzero robust step: $$g_k + \rho \frac{S_k d_k}{\sqrt{d^T_k S_k d_k}} + \alpha^{-1}_k d_k = 0.$$ For $S_k = s I$ with $s > 0$ and $g_k \neq 0$, show that this simplifies to $d_k = -\alpha_k (1 - \rho \sqrt{s} / \|g_k\|)_+ g_k$, where $(a)_+ = \max\{a, 0\}$. Also address the case $g_k = 0$. Explain how isotropic and anisotropic uncertainty can affect the magnitude and direction of the update.
+\subsubsection{Solution}
+For a nonzero step, the robust objective is differentiable. Its gradient is
+$$\nabla F(d) = g_k + \rho \frac{S_k d}{\sqrt{d^T S_k d}} + \frac{d}{\alpha_k}$$
+Therefore, the first-order optimality condition is
+$$g_k + \rho \frac{S_k d_k}{\sqrt{d^T_k S_k d_k}} + \alpha^{-1}_k d_k = 0$$
+For isotropic uncertainty, let $S_k = s I$, where $s > 0$.
+$$g_k + \rho \frac{s d_k}{\sqrt{s d^T_k d_k}} + \frac{d_k}{\alpha_k} = g_k + \rho \sqrt{s} \frac{d_k}{\|d_k\|_2} + \frac{d_k}{\alpha_k} = g_k + \left(\frac{\rho \sqrt{s}}{\|d_k\|_2} + \frac{1}{\alpha_k}\right) d_k = 0$$
+For $g_k \neq 0$, the optimal step is collinear with the negative gradient. Substituting $d_k = -\gamma g_k$ gives
+$$g_k - \rho \sqrt{s} \frac{g_k}{\|g_k\|_2} - \frac{\gamma}{\alpha_k} g_k= \left(1 - \frac{\rho \sqrt{s}}{\|g_k\|_2} - \frac{\gamma}{\alpha_k}\right) g_k = \{g_k \neq 0\} \Rightarrow \gamma = \alpha_k \left(1 - \frac{\rho \sqrt{s}}{\|g_k\|_2}\right)$$
+A nonzero step exists only if $\|g_k\| > \rho \sqrt{s}$. Combining this result with the zero-step case yields
+$d_k = -\alpha_k \left(1 - \frac{\rho \sqrt{s}}{|g_k|}\right)_+g_k$
+If $g_k = 0$, then
+$$F(d) = \rho \sqrt{d^T S_k d} + \frac{\|d\|^2_2}{2 \alpha_k}$$
+For $d = 0$: $F(0) = 0$. Then $g_k = 0 \Rightarrow d_k = 0$
+
+\subsection{(e)}
+Assume $\nabla f(\theta_k) \in \mathcal{G}_k$ and that $f$ has an $L$-Lipschitz continuous gradient. Determine whether the following inequality holds, and justify your answer: $$f(\theta_k + d_k) \leq  f(\theta_k) - (\alpha^{-1}_k - L/2) \|d_k\|^2_2$$. State a sufficient step-size condition for decrease and discuss the role of the gradient-conteinment assumption.
+\subsubsection{Solution}
+Since the gradient of $f$ is $L$-Lipschitz continuous, the descent lemma gives
+$$f(\theta_k + d_k) \leq f(\theta_k) + \nabla f(\theta_k)^T d_k + \frac{L}{2} \|d_k\|^2_2$$
+By assumption, $\nabla f(\theta_k) \in \mathcal{G}_k$. Set $\mathcal{G}_k$ contains all possible gradients: $\mathcal{G}_k = \{g_k + S^{1/2}_k u: \|u\| \leq \rho\}$. The true gradient is one of the elements of this set. Therefore 
+$$\nabla f(\theta_k)^T d_k \leq \max_{h \in \mathcal{G}_k} h^T d_k$$
+For a nonzero optimal robust step, the first-order optimality condition is
+$$g_k + \rho\frac{S_k d_k}{\sqrt{d^T_k S_k d_k}} + \frac{d_k}{\alpha_k} = 0$$
+Taking the inner product with $d_k$, we obtain
+$$g^T_k d_k + \rho \sqrt{d^T_k S_k d_k} = -\frac{\|d_k\|^2_2}{\alpha_k}$$
+Using the expression for the inner maximum derived in part (a),
+$$\max_{h \in G_k} h^T d_k \leq -\frac{\|d_k\|^2_2}{\alpha_k}$$
+Consequently,
+$$\nabla f(\theta_k)^T d_k \leq -\frac{\|d_k\|^2_2}{\alpha_k}$$
+Substituting this bound into the descent lemma yields
+$$f(\theta_k + d_k) \leq f(\theta_k) - \left(\frac{1}{\alpha_k} - \frac{L}{2}\right) \|d_k\|^2_2$$
+Therefore, a sufficient condition for strict decrease whenever $d_k \neq 0$ is
+$$0 < \alpha_k < \frac{2}{L}$$
+If $d_k = 0$, the objective remains unchanged.

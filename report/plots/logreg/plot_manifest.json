@@ -1,0 +1,78 @@
+{
+  "evaluation_seed": 1,
+  "variability": "training randomness on one fixed dataset",
+  "error_bars": "Mean \u00b1 one sample standard deviation across successful seeds; no spread estimated for n=1",
+  "selected_settings": {
+    "sgd": {
+      "learning_rate": 1.0,
+      "rho": 0.0,
+      "mean_validation_loss": 0.2183877000808716
+    },
+    "rsgd": {
+      "learning_rate": 1.0,
+      "rho": 0.0,
+      "mean_validation_loss": 0.2183877000808716
+    }
+  },
+  "metric_source": "noise_sweep_aggregated.csv",
+  "counts": [
+    {
+      "method": "sgd",
+      "gradient_noise": 0.0,
+      "n_runs": 5
+    },
+    {
+      "method": "sgd",
+      "gradient_noise": 0.015654980607895448,
+      "n_runs": 5
+    },
+    {
+      "method": "sgd",
+      "gradient_noise": 0.04696494182368634,
+      "n_runs": 5
+    },
+    {
+      "method": "sgd",
+      "gradient_noise": 0.15654980607895447,
+      "n_runs": 5
+    },
+    {
+      "method": "sgd",
+      "gradient_noise": 0.3913745151973862,
+      "n_runs": 5
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.0,
+      "n_runs": 5
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.015654980607895448,
+      "n_runs": 5
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.04696494182368634,
+      "n_runs": 5
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.15654980607895447,
+      "n_runs": 5
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.3913745151973862,
+      "n_runs": 5
+    }
+  ],
+  "failed_runs": 0,
+  "figures": [
+    "loss_curves",
+    "noise_summary",
+    "radius_sensitivity",
+    "tuning",
+    "decision_boundaries"
+  ]
+}
