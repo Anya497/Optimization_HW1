@@ -1,0 +1,78 @@
+In this section will be introduced experiment setup and results analysis for the first simulation.
+
+
+\subsection{Setup and Hyperparameters}
+Data was generated as \(a \mid y \sim \mathcal{N}((2y - 1)(1, 1)^\top, I_2)\) for balanced labels \(y \in \{0, 1\}\). We used \(N_{\text{train}}=1000\), \(N_{\text{val}}=400\), and \(N_{\text{test}}=400\). The model is a single affine layer \(t_\theta(a) = w^\top a + c\) (\(p=3\) parameters), optimized via binary cross-entropy from logits. 
+
+Hyperparameters (learning rate and $\rho$) were tuned once at \(\sigma=0\) on the validation set across 5 seeds and then frozen for the noise sweep. The selected settings were:
+\begin{itemize}
+    \item \textbf{SGD:} \(lr^* = 1.0\), \(\rho=0.0\).
+    \item \textbf{R-SGD:} \(lr^* = 1.0\), \(\rho^* = 0.0\) (got SGD from this tuning).
+\end{itemize}
+We used a separate $\text{data\_seed}=59$ for data generation to have a constant dataset across seed experiments.
+The gradient-noise scale was estimated during a warmup phase (50 steps) as \(\sigma_{\text{scale}} = 0.156\). A single, shared noise grid was used for both methods to ensure a fair comparison. 
+\\
+Hardware: 
+ \begin{itemize}
+    \item CPU Intel Core i3-1115G4 @ 3.00GHz
+    \item RAM 8 Gb DDR4
+ \end{itemize}
+OS: Ubuntu 24.04.5 LTS
+\\
+Hyperparameters grid:
+\begin{itemize}
+    \item \(lr \in \{0.01, 0.1, 1.0, 3.0, 10.0\}\)
+    \item \(\rho \in \{0.0, 0.1, 0.3, 1.0, 3.0\}\)     
+\end{itemize}
+
+Seeds grid: \(seed \in \{1, 2, 3, 4, 5\}\)
+\\
+
+Other hyperparameters:
+\begin{itemize}
+    \item \(batch\_size = 32\)
+    \item \(updates = 300\)
+    \item \(decay\_scale = 50\)
+    \item \(eval\_every = 2\)
+\end{itemize}
+
+\subsection{Results}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{./plots/logreg/noise_summary.png}
+    \caption{Simulation 1 metrics vs. gradient noise \(\sigma\). Mean \(\pm\) 1 sample SD over 5 evaluation seeds. Top row: final training loss, test loss, and test accuracy. Bottom row: runtime, gradient evaluations, and zero-step frequency.}
+    \label{fig:sim1_metrics}
+\end{figure}
+
+
+\subsection{Decision Boundary}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./plots/logreg/decision_boundaries.png}
+    \caption{Decision boundaries for seed=1, both sides are equal. }
+    \label{fig:sim1_boundary}
+\end{figure}
+
+Figure \ref{fig:sim1_boundary} shows the decision boundary for evaluation seed 1. Because the true classes are linearly separable, the model learns a straight line, and the artificial gradient noise does not visibly perturb this boundary. Both sides are equal as we used optimal settings for both optimizers and RSGD became SGD after this process.
+
+\subsection{Discussion}
+As required, we address whether optimization quality and prediction quality yield the same ranking. In Simulation 1, \textbf{they do agree, but only because both are saturated.} The dataset consists of two Gaussian blobs that are easily separable. The Bayes-optimal accuracy for this setup is approximately \(0.92\), and the Bayes risk is roughly \(0.19\). The model hits this limit almost immediately. 
+
+Consequently, the test accuracy remains flat at \(\approx 0.93\), and the losses remain flat at \(\approx 0.19\) regardless of \(\sigma\) or the method used. Any differences between SGD and R-SGD fall well within the seed-to-seed variance (error bars).
+
+\subsection{Critical Analysis: Why does R-SGD not help here?}
+The results for Simulation 1 constitute a clear negative result, which is a valid outcome. There are three reasons why R-SGD provides no benefit here:
+\begin{enumerate}
+    \item \textbf{Convexity and Simplicity:} The objective is convex and the model is linear. The noise added to the per-example gradients averages out over the batch; it does not create harmful local minima or saddle points.
+    \item \textbf{Bayes Limit:} The problem is already solved optimally. Robustness cannot improve a model that has already reached the irreducible error floor.
+    \item \textbf{Learning Rate Compensation:} Even if \(\rho^* > 0\), the effective step size is shortened by robustness. The tuned learning rate for R-SGD can easily compensate for this, making the optimization trajectories nearly identical to SGD.
+\end{enumerate}
+
+The only observable difference is computational: R-SGD is slightly slower runtime (\ref{fig:sim1_metrics}) due to the overhead of computing \(S_k\) and solving the robust subproblem. The zero-step frequency is exactly zero, confirming that the uncertainty ball never fully vanished the gradient.
+
+\textbf{Conclusion:} On a simple, convex, linearly separable problem, R-SGD reduces to SGD in effect. Its robustness provides no accuracy or loss benefit, only computational overhead.
+
+
+Error-bars: init values, batch estimation (a lot of noise). 
+
+noise level, isotropic noise
