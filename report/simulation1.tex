@@ -1,14 +1,11 @@
+\section{Simulation 1: Logistic Regression}
+
 In this section will be introduced experiment setup and results analysis for the first simulation.
 
 
-\subsection{Setup and Hyperparameters}
+\subsection{Data and Hyperparameters}
 Data was generated as \(a \mid y \sim \mathcal{N}((2y - 1)(1, 1)^\top, I_2)\) for balanced labels \(y \in \{0, 1\}\). We used \(N_{\text{train}}=1000\), \(N_{\text{val}}=400\), and \(N_{\text{test}}=400\). The model is a single affine layer \(t_\theta(a) = w^\top a + c\) (\(p=3\) parameters), optimized via binary cross-entropy from logits. 
 
-Hyperparameters (learning rate and $\rho$) were tuned once at \(\sigma=0\) on the validation set across 5 seeds and then frozen for the noise sweep. The selected settings were:
-\begin{itemize}
-    \item \textbf{SGD:} \(lr^* = 1.0\), \(\rho=0.0\).
-    \item \textbf{R-SGD:} \(lr^* = 1.0\), \(\rho^* = 0.0\) (got SGD from this tuning).
-\end{itemize}
 We used a separate $\text{data\_seed}=59$ for data generation to have a constant dataset across seed experiments.
 The gradient-noise scale was estimated during a warmup phase (50 steps) as \(\sigma_{\text{scale}} = 0.156\). A single, shared noise grid was used for both methods to ensure a fair comparison. 
 \\
@@ -28,15 +25,89 @@ Hyperparameters grid:
 Seeds grid: \(seed \in \{1, 2, 3, 4, 5\}\)
 \\
 
-Other hyperparameters:
+Fixed hyperparameters:
 \begin{itemize}
     \item \(batch\_size = 32\)
     \item \(updates = 300\)
     \item \(decay\_scale = 50\)
     \item \(eval\_every = 2\)
+    \item learning-rate schedule family \(\alpha_k = \frac{\alpha_0}{\sqrt{1+\frac{k}{50}}}\)
 \end{itemize}
 
-\subsection{Results}
+\subsection{Grid search}
+
+Hyperparameters (learning rate and $\rho$) were tuned once at \(\sigma=0\) on the validation set across 5 seeds and then frozen for the noise sweep. 
+For SGD we tuned only learning rate, for R-SGD we tuned both learning rate and \(\rho\).
+The selected settings were:
+\begin{itemize}
+    \item \textbf{SGD:} \(lr = 1.0\).
+    \item \textbf{R-SGD:} \(lr = 1.0\), \(\rho = 0.0\) (got SGD from this tuning).
+\end{itemize}
+
+For this task in the experiment settings mentioned earlier the optimal optimizer is SGD with 
+learning rate equal to 1.
+
+\subsection{Experiments with noisy gradients}
+
+This section describes the experiments with adding isotropic noise to gradients 
+and training logistic regression using the hyperparameters tuned earlier.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{./plots/logreg/loss_curves.png}
+    \caption{Simulation 1 training and validation losses against updates.}
+    \label{fig:sim1_loss_curves}
+\end{figure}
+
+Figure \ref{fig:sim1_loss_curves} shows that the training process is almost the 
+same across different noise levels. All experiments led to approximately the 
+same results. The same situation can be seen in Figure \ref{fig:sim1_boundary}: 
+despite adding the noise, the model still splits the classes successfully after 
+being tuned with ordinary SGD.
+
+However, a detailed analysis of the metrics (presented in Figure 3) reveals several important observations:
+
+\begin{itemize}
+    \item As shown in the bottom-middle panel, the 
+    number of gradient evaluations remains strictly constant (at 9600) across all 
+    noise levels. This confirms that the computational budget is identical for all 
+    experiments, ensuring a fair comparison.
+    
+    \item While the test loss exhibits a visible upward 
+    trend as the noise level \(\sigma\) increases, the test accuracy remains highly 
+    stable at approximately 0.93. This indicates that standard SGD is robust enough 
+    to handle this task even with substantial added gradient noise, successfully 
+    finding a decision boundary that generalizes well.
+    
+    \item The error bars (representing 1 sample SD over 
+    5 seeds) widen as \(\sigma\) increases. This is expected: higher levels of 
+    artificial gradient noise introduce greater stochasticity into the optimization 
+    path, leading to higher variance in the final model parameters.
+    
+    \item Interestingly, the error bars for the test loss 
+    do not show a clear trend of increasing with \(\sigma\). This is logical because 
+    the model was never trained on the test data; thus, the test gradients were never 
+    computed or corrupted by noise. The test loss simply reflects the evaluation of 
+    the trained parameters on clean data.
+    
+    \item The bottom-right panel confirms that the 
+    zero-step frequency is exactly zero across all noise levels. This is expected for 
+    standard SGD, where the robustness radius \(\rho = 0\), meaning the optimization 
+    step is never intentionally halted.
+    
+    \item The runtime plot (bottom-left) shows a noticeable 
+    spike in variance at \(\sigma \approx 0.15\). Because the computational complexity 
+    of the SGD update does not depend on the noise level \(\sigma\), this anomaly is 
+    likely an artifact of operating system scheduling or Python garbage collection 
+    during those specific runs, rather than an algorithm-specific effect.
+\end{itemize}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{./plots/logreg/decision_boundaries.png}
+    \caption{Decision boundaries for seed=1, for SGD with lr=1.}
+    \label{fig:sim1_boundary}
+\end{figure}
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\textwidth]{./plots/logreg/noise_summary.png}
@@ -45,34 +116,36 @@ Other hyperparameters:
 \end{figure}
 
 
-\subsection{Decision Boundary}
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{./plots/logreg/decision_boundaries.png}
-    \caption{Decision boundaries for seed=1, both sides are equal. }
-    \label{fig:sim1_boundary}
+    \includegraphics[width=\textwidth]{./plots/logreg/radius_sensitivity.png}
+    \caption{Simulation 1 metrics vs radius \(\rho\).}
+    \label{fig:sim1_radius}
 \end{figure}
 
-Figure \ref{fig:sim1_boundary} shows the decision boundary for evaluation seed 1. Because the true classes are linearly separable, the model learns a straight line, and the artificial gradient noise does not visibly perturb this boundary. Both sides are equal as we used optimal settings for both optimizers and RSGD became SGD after this process.
+\subsection{Sensitivity to Robustness Radius}
+\label{sec:sim1_radius}
 
-\subsection{Discussion}
-As required, we address whether optimization quality and prediction quality yield the same ranking. In Simulation 1, \textbf{they do agree, but only because both are saturated.} The dataset consists of two Gaussian blobs that are easily separable. The Bayes-optimal accuracy for this setup is approximately \(0.92\), and the Bayes risk is roughly \(0.19\). The model hits this limit almost immediately. 
+Figure \ref{fig:sim1_radius} illustrates the impact of varying the robustness radius \(\rho\) (at a fixed learning rate \(lr=1\)) on training loss, validation loss, zero-step frequency, validation accuracy, and runtime.
 
-Consequently, the test accuracy remains flat at \(\approx 0.93\), and the losses remain flat at \(\approx 0.19\) regardless of \(\sigma\) or the method used. Any differences between SGD and R-SGD fall well within the seed-to-seed variance (error bars).
+\begin{itemize}
+    \item As the radius \(\rho\) increases, both training and validation losses exhibit a clear upward trend. This degradation is directly linked to the increasing frequency of zero-steps. With a larger radius, the optimizer frequently halts its updates, causing the training process to terminate at a less optimal point compared to configurations with fewer zero-steps.
+    
+    \item The zero-step frequency increases monotonically with \(\rho\) (reaching over 80\% at \(\rho=3\)). This is mathematically consistent with the zero-step condition derived in the theoretical section:
+    \begin{equation}
+        g_k^T S_k^{-1} g_k \le \rho^2 \implies d_k = 0.
+    \end{equation}
+    As \(\rho\) grows, the uncertainty ball expands, making it increasingly likely that the gradient magnitude is "swallowed" by the uncertainty bound, forcing the robust step \(d_k\) to zero.
+    
+    \item Although the loss worsens significantly with larger \(\rho\), the validation accuracy remains remarkably stable, converging to approximately \(0.91\) across all tested radii. This divergence is due to the fundamental difference between the two metrics: loss is a continuous measure sensitive to even the smallest shift in the decision boundary, whereas accuracy is a discrete metric. Accuracy only changes if the boundary shifts enough to push a data point to the other side of the classification threshold. Therefore, a noticeable increase in loss does not necessarily translate to a drop in accuracy.
+    
+    \item The runtime behavior reveals an interesting non-monotonic trend: it initially spikes and then decreases as \(\rho\) grows. This is directly correlated with the zero-step frequency. When the zero-step condition is met, the algorithm bypasses the iterative numerical solver for the \(d_k\) subproblem and simply sets the step to zero. The computational savings from skipping the solver eventually outweigh the overhead of computing the covariance matrix \(S_k\), leading to reduced runtime at very large radii.
+    
+    \item Comparing the optimizers, SGD and R-SGD achieve nearly identical validation accuracy. However, standard SGD is consistently faster than R-SGD (at \(\rho \to 0\)), making it the more computationally efficient choice for this specific task where robustness yields no predictive advantage.
+    
+    \item The error bars represent one sample standard deviation across the 5 evaluation seeds. The relatively large variance can be attributed to the limited number of seeds and the moderate batch size. This constraint results in fewer explored initializations and higher variance in the per-example gradient estimates at each optimization step.
+\end{itemize}
 
-\subsection{Critical Analysis: Why does R-SGD not help here?}
-The results for Simulation 1 constitute a clear negative result, which is a valid outcome. There are three reasons why R-SGD provides no benefit here:
-\begin{enumerate}
-    \item \textbf{Convexity and Simplicity:} The objective is convex and the model is linear. The noise added to the per-example gradients averages out over the batch; it does not create harmful local minima or saddle points.
-    \item \textbf{Bayes Limit:} The problem is already solved optimally. Robustness cannot improve a model that has already reached the irreducible error floor.
-    \item \textbf{Learning Rate Compensation:} Even if \(\rho^* > 0\), the effective step size is shortened by robustness. The tuned learning rate for R-SGD can easily compensate for this, making the optimization trajectories nearly identical to SGD.
-\end{enumerate}
+\subsection{Reproducibility}
 
-The only observable difference is computational: R-SGD is slightly slower runtime (\ref{fig:sim1_metrics}) due to the overhead of computing \(S_k\) and solving the robust subproblem. The zero-step frequency is exactly zero, confirming that the uncertainty ball never fully vanished the gradient.
-
-\textbf{Conclusion:} On a simple, convex, linearly separable problem, R-SGD reduces to SGD in effect. Its robustness provides no accuracy or loss benefit, only computational overhead.
-
-
-Error-bars: init values, batch estimation (a lot of noise). 
-
-noise level, isotropic noise
+To reproduce the experiment use \href{https://github.com/Anya497/Optimization_HW1}{our repository}\footnote{\url{https://github.com/Anya497/Optimization_HW1} --- link to repository with experiments code.} and follow the guide in the section "Simulation 1".
