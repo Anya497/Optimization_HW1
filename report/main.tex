@@ -1,25 +1,29 @@
 \documentclass[a4paper, 12pt]{article} 
-\usepackage{graphicx} % Required for inserting images
+\usepackage[left=2cm, right=2cm, top=2cm, bottom=2cm]{geometry}
+\usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{booktabs}
+\usepackage[colorlinks=true, 
+            linkcolor=blue,   
+            urlcolor=blue,    
+            citecolor=blue]{hyperref}
 
 \title{SGD vs RSGD under gradient uncertainty}
 \date{November 2026}
-\author{}
+\author{Rushan Khamatyarov, Sultan Akhmetov, Anna Chistyakova}
 \begin{document}
 
 \maketitle
 
-\section{Derivation and interpretation}
+\input{team.tex}
 
 \input{math.tex}
 
-\section{Implementation and numerical checks}
+\input{optimizer_implementation.tex}
 
-\section{General Experimental Setup}
-\label{sec:general_setup}
 \input{experiment_desc.tex}
 
-\section{Simulation 1: Logistic Regression}
 \input{simulation1.tex}
+
+\input{discussion.tex}
 \end{document}
