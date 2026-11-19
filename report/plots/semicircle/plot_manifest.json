@@ -1,0 +1,81 @@
+{
+  "evaluation_seed": 1,
+  "variability": "training randomness on one fixed dataset",
+  "error_bars": "Mean \u00b1 one sample standard deviation across successful seeds; no spread estimated for n=1",
+  "selection_metric": "validation_loss",
+  "selected_settings": {
+    "sgd": {
+      "learning_rate": 10.0,
+      "rho": 0.0,
+      "mean_validation_loss": 0.003218589339405298
+    },
+    "rsgd": {
+      "learning_rate": 10.0,
+      "rho": 1.0,
+      "mean_validation_loss": 0.004568880245089531
+    }
+  },
+  "metric_source": "noise_sweep_aggregated.csv",
+  "counts": [
+    {
+      "method": "sgd",
+      "gradient_noise": 0.0,
+      "n_runs": 15
+    },
+    {
+      "method": "sgd",
+      "gradient_noise": 0.01703896378279805,
+      "n_runs": 15
+    },
+    {
+      "method": "sgd",
+      "gradient_noise": 0.05111689134839415,
+      "n_runs": 15
+    },
+    {
+      "method": "sgd",
+      "gradient_noise": 0.1703896378279805,
+      "n_runs": 15
+    },
+    {
+      "method": "sgd",
+      "gradient_noise": 0.4259740945699513,
+      "n_runs": 15
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.0,
+      "n_runs": 15
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.01703896378279805,
+      "n_runs": 15
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.05111689134839415,
+      "n_runs": 15
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.1703896378279805,
+      "n_runs": 15
+    },
+    {
+      "method": "rsgd",
+      "gradient_noise": 0.4259740945699513,
+      "n_runs": 15
+    }
+  ],
+  "failed_runs": 0,
+  "figures": [
+    "loss_curves",
+    "noise_summary",
+    "radius_sensitivity",
+    "tuning",
+    "decision_boundaries"
+  ],
+  "source_run": "results/initial_grid_repeat_15seeds_500steps/semicircle/grid_search",
+  "source_pr": "https://github.com/Anya497/Optimization_HW1/pull/9"
+}
