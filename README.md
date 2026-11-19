@@ -5,6 +5,17 @@ SGD versus Robust SGD under Gradient Uncertainty
 * python==3.13
 * torch==2.15
 
+## Simulation 1
+
+To run this simulation clone this repository, then run the following commands from repository root directory:
+```sh
+python -m venv venv
+source ./venv/bin/activate
+pip install -r requirements.txt
+python -m experiments.run_grid_search --experiment logreg --data-seed 59 --updates 300 --eval-every 2
+python -m experiments.plot_results results/logreg/grid_search/
+```
+
 ## Project layout
 
 - `src/data/log_regression.py`: Simulation 1 Gaussian sampler with Bernoulli labels.
