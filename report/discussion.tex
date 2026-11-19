@@ -3,24 +3,9 @@
 
 \subsection*{(a) When does R-SGD help?}
 
-In the tasks described above, R-SGD did not demonstrate any performance gain 
-over standard SGD. This outcome is consistent with our experimental setup. 
-We introduced additive isotropic Gaussian noise, meaning the observed gradient 
-covariance is
-\begin{equation}
-    \operatorname{Cov}(v_i) = \operatorname{Cov}(u_i) + \sigma^2 I .
-\end{equation}
-If the added noise dominates the variation of the clean gradients, the estimated 
-uncertainty matrix $S_k$ becomes approximately isotropic, $S_k \approx s I$. Under 
-this condition, as derived in Section~\ref{sec:isotropic_noise}, the optimal robust 
-step simplifies to:
-\begin{equation}
-    d_k = -\alpha_k \left( 1 - \frac{\rho \sqrt{s}}{|g_k|} \right)_+ g_k .
-    \label{eq:robust_step_isotropic}
-\end{equation}
-This equation shows that for isotropic uncertainty, the robust step $d_k$ is collinear with the negative batch gradient $-g_k$. R-SGD does not change the update direction; it merely scales the step length. Because R-SGD and SGD take different step lengths, they do not follow the exact same trajectory; their subsequent states diverge, leading to different gradients at the next iteration. Nevertheless, since both update in the same direction at any given state, R-SGD provides no directional advantage. It effectively acts as a step-size regularizer, a role that can be fulfilled by tuning the learning rate of standard SGD. Therefore, in our setup, R-SGD introduces unnecessary computational overhead.
+In the tasks described above, R-SGD did not demonstrate any performance gain over standard SGD. This outcome can be theoretically explained by the mathematical derivations presented in Section~\ref{sec:isotropic_noise}. If the injected isotropic noise dominates the underlying variance of the clean gradients, the estimated uncertainty matrix becomes approximately isotropic ($S_k \approx s I$). As shown, in this regime the robust step $d_k$ is approximately collinear with the standard negative gradient $-g_k$. Consequently, R-SGD merely acts as a step-size regularizer by scaling the magnitude of the update --- a behavior that can be equivalently achieved by tuning the learning rate of standard SGD.
 
-R-SGD is theoretically positioned to help when the noise is strongly anisotropic or when the clean gradient covariance has vastly different directional scales, forcing the optimizer to rotate its step away from heavily corrupted directions. However, testing such structured anisotropic noise was outside the scope of this work.
+However, while this mathematical formulation strongly suggests that isotropic noise neutralizes the directional advantages of R-SGD, a definitive empirical confirmation would require additional targeted diagnostics. Specifically, future checks could involve directly measuring the condition number of the estimated covariance matrix $S_k$ or computing the cosine similarity between $d_k$ and $g_k$ during training to verify the degree of collinearity. Without these supplementary checks, the collinearity remains a highly plausible theoretical explanation for our observed results rather than a strictly verified empirical fact. Furthermore, testing R-SGD under explicitly anisotropic noise (e.g., using a non-identity scaling matrix as in the quadratic illustration) remains an interesting direction for future work.
 
 \subsection*{(b) Interactions among radius, covariance, and learning rate}
 
