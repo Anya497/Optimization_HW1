@@ -135,21 +135,22 @@ def plot_results(root, seed=None):
     save_figure(fig, output, "noise_summary")
 
     # Section 4.4: all radii at the selected R-SGD learning rate, without retuning per σ.
-    fig, axes = plt.subplots(1, 3, figsize=(12, 3.5), layout="constrained")
+    fig, axes = plt.subplots(1, 5, figsize=(16, 3.5), layout="constrained")
     robust = [row for row in aggregated if row["method"] == "rsgd"
               and row["learning_rate"] == selection["rsgd"]["learning_rate"]]
     for noise, color in zip(noises, plt.cm.viridis(np.linspace(0.1, 0.9, len(noises)))):
         samples = sorted((row for row in robust if row["gradient_noise"] == noise),
                          key=lambda row: row["rho"])
         radii = [row["rho"] for row in samples]
-        for ax, metric, label in zip(axes, ("train_loss", "validation_loss", "zero_step_frequency"),
-                                     ("Training loss", "Validation loss", "Zero-step frequency")):
+        for ax, metric, label in zip(axes, ("train_loss", "validation_loss", "zero_step_frequency", "validation_accuracy", "runtime_seconds"),
+                                     ("Training loss", "Validation loss", "Zero-step frequency", "Validation Accuracy", "Runtime, s")):
             ax.errorbar(radii, [row[f"{metric}_mean"] for row in samples],
                         yerr=[row[f"{metric}_std"] for row in samples], fmt="o-", capsize=3,
                         color=color, label=f"σ={noise:.3g}")
+            # ax.set_yscale('log', base=10)
             ax.set(xlabel="Radius ρ", ylabel=label)
     axes[0].legend(fontsize=8)
-    axes[-1].set_ylim(0, 1)
+    axes[-3].set_ylim(0, 1)
     fig.suptitle(f"Radius sensitivity | lr={selection['rsgd']['learning_rate']:g} | mean ± 1 SD")
     save_figure(fig, output, "radius_sensitivity")
 
